@@ -12,10 +12,13 @@ async def home():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Dragy AI</title>
+        <!-- Tailwind CSS -->
         <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Google Fonts (Prompt) -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+        <!-- Lucide Icons -->
         <script src="https://unpkg.com/lucide@latest"></script>
         <style>
             body { font-family: 'Prompt', sans-serif; }
@@ -23,24 +26,32 @@ async def home():
                 background: radial-gradient(circle at center, #1a0b36 0%, #0b0518 70%, #05020a 100%);
             }
             .glow-purple {
-                text-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+                box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
             }
+            /* ตกแต่ง Scrollbar สำหรับช่องแชท */
+            .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #2e165b; border-radius: 10px; }
         </style>
     </head>
     <body class="bg-gradient-dark text-gray-200 min-h-screen flex overflow-hidden">
 
+        <!-- ================= SIDEBAR (แถบซ้ายมือ) ================= -->
         <aside class="w-64 bg-[#0a0516]/80 border-r border-purple-950/40 p-4 flex flex-col justify-between hidden md:flex">
             <div>
+                <!-- Logo -->
                 <div class="flex items-center gap-3 px-2 py-3 mb-4">
                     <div class="w-8 h-8 bg-gradient-to-tr from-purple-600 to-indigo-500 rounded-lg flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-purple-500/30">D</div>
                     <span class="text-xl font-semibold text-white tracking-wide">Dragy AI</span>
                 </div>
 
-                <button class="w-full border border-purple-900/60 hover:border-purple-500/50 hover:bg-purple-950/20 text-gray-300 rounded-xl py-2 px-4 flex items-center justify-between text-sm transition mb-6">
+                <!-- New Chat Button -->
+                <button onclick="window.location.reload();" class="w-full border border-purple-900/60 hover:border-purple-500/50 hover:bg-purple-950/20 text-gray-300 rounded-xl py-2 px-4 flex items-center justify-between text-sm transition mb-6">
                     <span class="flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> New Chat</span>
                     <span class="text-xs text-gray-500 border border-gray-700/50 px-1.5 py-0.5 rounded">⌘ K</span>
                 </button>
 
+                <!-- Navigation Menu -->
                 <nav class="space-y-1">
                     <a href="#" class="flex items-center gap-3 px-3 py-2.5 bg-purple-950/40 text-purple-300 rounded-xl text-sm font-medium"><i data-lucide="home" class="w-4 h-4"></i> หน้าแรก</a>
                     <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="message-square" class="w-4 h-4"></i> AI Chat</a>
@@ -52,11 +63,13 @@ async def home():
                     <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="settings" class="w-4 h-4"></i> การตั้งค่า</a>
                 </nav>
 
+                <!-- Usage Monitor Stats -->
                 <div class="mt-6 bg-[#110924]/60 border border-purple-950/50 rounded-xl p-3 text-xs text-gray-400 space-y-3">
                     <div class="flex justify-between items-center">
                         <span>การใช้งานวันนี้</span>
                         <a href="#" class="text-purple-400 text-[10px] hover:underline">รีเซ็ตใน 14:30:12</a>
                     </div>
+                    <!-- ภาพ -->
                     <div class="space-y-1">
                         <div class="flex justify-between text-[11px]">
                             <span class="flex items-center gap-1.5"><i data-lucide="image" class="w-3 h-3 text-blue-400"></i> ภาพ</span>
@@ -66,6 +79,7 @@ async def home():
                             <div class="bg-blue-500 h-full rounded-full" style="width: 80%"></div>
                         </div>
                     </div>
+                    <!-- วิดีโอ -->
                     <div class="space-y-1">
                         <div class="flex justify-between text-[11px]">
                             <span class="flex items-center gap-1.5"><i data-lucide="video" class="w-3 h-3 text-purple-400"></i> วิดีโอ</span>
@@ -75,6 +89,7 @@ async def home():
                             <div class="bg-purple-500 h-full rounded-full" style="width: 0%"></div>
                         </div>
                     </div>
+                    <!-- แชท -->
                     <div class="space-y-1">
                         <div class="flex justify-between text-[11px]">
                             <span class="flex items-center gap-1.5"><i data-lucide="message-circle" class="w-3 h-3 text-green-400"></i> แชท</span>
@@ -87,6 +102,7 @@ async def home():
                 </div>
             </div>
 
+            <!-- Dragy AI Pro Block -->
             <div class="space-y-3">
                 <div class="bg-gradient-to-b from-[#210c43] to-[#120526] border border-purple-500/20 rounded-xl p-3 text-center shadow-lg">
                     <div class="text-sm font-semibold text-yellow-500 flex items-center justify-center gap-1.5 mb-1">
@@ -96,6 +112,7 @@ async def home():
                     <button class="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:opacity-90 text-white text-xs font-medium py-2 px-3 rounded-lg shadow-md transition">อัปเกรดตอนนี้</button>
                 </div>
                 
+                <!-- Dark / Light Toggle -->
                 <div class="flex bg-[#110924] p-1 rounded-xl text-xs text-gray-400">
                     <button class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg hover:text-gray-200"><i data-lucide="sun" class="w-3.5 h-3.5"></i> Light</button>
                     <button class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-[#211142] text-white font-medium shadow-sm"><i data-lucide="moon" class="w-3.5 h-3.5 text-purple-400"></i> Dark</button>
@@ -103,9 +120,11 @@ async def home():
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col justify-between p-6 relative overflow-y-auto">
+        <!-- ================= MAIN CONTENT ================= -->
+        <main class="flex-1 flex flex-col justify-between p-6 relative overflow-hidden">
             
-            <div class="flex justify-end items-center gap-3 z-10">
+            <!-- Top Right Navbar Controls -->
+            <div class="flex justify-end items-center gap-3 z-10 flex-shrink-0">
                 <button class="p-2 text-gray-400 hover:text-gray-200 transition"><i data-lucide="sun" class="w-5 h-5"></i></button>
                 <button class="flex items-center gap-1 px-3 py-1.5 bg-[#170e2b] border border-purple-950 rounded-xl text-sm text-gray-300 hover:bg-[#23173d] transition">
                     <i data-lucide="globe" class="w-4 h-4"></i> TH <i data-lucide="chevron-down" class="w-3 h-3"></i>
@@ -117,19 +136,32 @@ async def home():
                 </button>
             </div>
 
-            <div class="max-w-4xl w-full mx-auto my-auto flex flex-col items-center text-center z-10 space-y-8">
-                <div class="relative w-28 h-28 flex items-center justify-center bg-gradient-to-b from-purple-600/20 to-transparent rounded-full p-4 border border-purple-500/10">
-                    <div class="text-5xl font-bold text-yellow-500/90 glow-purple">ॐ</div>
-                    <div class="absolute inset-0 bg-purple-500/10 blur-xl rounded-full"></div>
+            <!-- Scrollable Content Container (สำหรับรองรับกล่องข้อความแชท) -->
+            <div id="main-scroll-area" class="flex-1 w-full max-w-4xl mx-auto my-4 overflow-y-auto custom-scrollbar flex flex-col justify-start items-center px-2 space-y-8">
+                
+                <!-- Welcome Banner (จะถูกซ่อนเมื่อเริ่มคุยแชทจริง) -->
+                <div id="welcome-view" class="w-full flex flex-col items-center text-center pt-12 space-y-8 flex-shrink-0">
+                    <!-- สัญลักษณ์โอมลวดลายคลาสสิกดั้งเดิมสีทองเมทัลลิก -->
+                    <div class="relative w-28 h-28 flex items-center justify-center bg-gradient-to-b from-purple-600/20 to-transparent rounded-full border border-purple-500/20 glow-purple">
+                        <img src="https://img.icons8.com/fluent-systems-filled/200/FAB005/om.png" alt="Classic Om" class="w-16 h-16 object-contain opacity-90 drop-shadow-[0_0_15px_rgba(250,176,5,0.6)]">
+                        <div class="absolute inset-0 bg-purple-500/5 blur-xl rounded-full"></div>
+                    </div>
+
+                    <!-- Main Greeting Headlines -->
+                    <div class="space-y-3">
+                        <h1 class="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">สวัสดีครับ 👋</h1>
+                        <p class="text-lg md:text-xl text-gray-400 font-light">วันนี้ให้ <span class="text-purple-400 font-medium">Dragy AI</span> ช่วยอะไรดี?</p>
+                    </div>
                 </div>
 
-                <div class="space-y-3">
-                    <h1 class="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">สวัสดีครับ 👋</h1>
-                    <p class="text-lg md:text-xl text-gray-400 font-light">วันนี้ให้ <span class="text-purple-400 font-medium">Dragy AI</span> ช่วยอะไรดี?</p>
+                <!-- Chat Display Area (สำหรับข้อความถาม-ตอบ) -->
+                <div id="chat-box" class="w-full hidden space-y-4 text-sm px-2">
+                    <!-- ข้อความจะเพิ่มเข้ามาที่นี่ด้วย JavaScript -->
                 </div>
 
-                <div class="w-full bg-[#130b24]/90 border border-purple-500/20 rounded-3xl p-4 shadow-2xl focus-within:border-purple-500/40 transition">
-                    <textarea class="w-full bg-transparent text-gray-200 placeholder-gray-600 text-sm focus:outline-none resize-none h-20" placeholder="พิมพ์ข้อความอะไรก็ได้..."></textarea>
+                <!-- Input Prompter Container Box -->
+                <div class="w-full bg-[#130b24]/90 border border-purple-500/20 rounded-3xl p-4 shadow-2xl focus-within:border-purple-500/40 transition flex-shrink-0">
+                    <textarea id="user-input" class="w-full bg-transparent text-gray-200 placeholder-gray-600 text-sm focus:outline-none resize-none h-16" placeholder="พิมพ์ข้อความอะไรก็ได้...แล้วกดส่ง"></textarea>
                     
                     <div class="flex justify-between items-center mt-2 pt-2 border-t border-purple-950/50">
                         <div class="flex items-center gap-2">
@@ -139,65 +171,122 @@ async def home():
                         </div>
                         <div class="flex items-center gap-2">
                             <button class="flex items-center gap-1 px-3 py-1.5 bg-[#170e2b] border border-purple-950 text-xs text-gray-400 rounded-xl hover:text-gray-200 transition">Grok 3 <i data-lucide="chevron-down" class="w-3 h-3"></i></button>
-                            <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-600/30 transition"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+                            <button id="send-btn" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-600/30 transition"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 w-full text-left">
-                    <div class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/20 cursor-pointer hover:bg-purple-950/10 transition flex items-center gap-2.5">
+                <!-- Features Suggestion Grid Box -->
+                <div id="suggestions-box" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 w-full text-left flex-shrink-0">
+                    <div onclick="fillPrompt('ช่วยคิดไอเดียคอนเทนต์ สำหรับ TikTok')" class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/30 cursor-pointer hover:bg-purple-950/20 transition flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-xl bg-black flex items-center justify-center font-bold text-teal-400 text-sm">🎵</div>
-                        <div>
-                            <div class="text-[11px] font-medium text-gray-200">ช่วยคิดไอเดียคอนเทนต์</div>
-                            <div class="text-[9px] text-gray-500">สำหรับ TikTok</div>
-                        </div>
+                        <div><div class="text-[11px] font-medium text-gray-200">ช่วยคิดไอเดียคอนเทนต์</div><div class="text-[9px] text-gray-500">สำหรับ TikTok</div></div>
                     </div>
-                    <div class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/20 cursor-pointer hover:bg-purple-950/10 transition flex items-center gap-2.5">
+                    <div onclick="fillPrompt('สรุปข่าวเทคโนโลยีล่าสุดให้หน่อย')" class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/30 cursor-pointer hover:bg-purple-950/20 transition flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-xl bg-blue-950/40 text-blue-400 flex items-center justify-center text-sm"><i data-lucide="newspaper" class="w-4 h-4"></i></div>
-                        <div>
-                            <div class="text-[11px] font-medium text-gray-200">สรุปข่าวเทคโนโลยี</div>
-                            <div class="text-[9px] text-gray-500">ล่าสุดให้หน่อย</div>
-                        </div>
+                        <div><div class="text-[11px] font-medium text-gray-200">สรุปข่าวเทคโนโลยี</div><div class="text-[9px] text-gray-500">ล่าสุดให้หน่อย</div></div>
                     </div>
-                    <div class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/20 cursor-pointer hover:bg-purple-950/10 transition flex items-center gap-2.5">
+                    <div onclick="fillPrompt('เขียนสคริปต์ YouTube เกี่ยวกับ AI')" class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/30 cursor-pointer hover:bg-purple-950/20 transition flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-xl bg-red-950/40 text-red-500 flex items-center justify-center text-sm"><i data-lucide="youtube" class="w-4 h-4"></i></div>
-                        <div>
-                            <div class="text-[11px] font-medium text-gray-200">เขียนสคริปต์ YouTube</div>
-                            <div class="text-[9px] text-gray-500">เกี่ยวกับ AI</div>
-                        </div>
+                        <div><div class="text-[11px] font-medium text-gray-200">เขียนสคริปต์ YouTube</div><div class="text-[9px] text-gray-500">เกี่ยวกับ AI</div></div>
                     </div>
-                    <div class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/20 cursor-pointer hover:bg-purple-950/10 transition flex items-center gap-2.5">
+                    <div onclick="fillPrompt('สร้างภาพพุทธศิลป์ สไตล์สมจริง')" class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/30 cursor-pointer hover:bg-purple-950/20 transition flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-xl bg-yellow-950/40 text-yellow-500 flex items-center justify-center text-sm">🔱</div>
-                        <div>
-                            <div class="text-[11px] font-medium text-gray-200">สร้างภาพพุทธศิลป์</div>
-                            <div class="text-[9px] text-gray-500">สไตล์สมจริง</div>
-                        </div>
+                        <div><div class="text-[11px] font-medium text-gray-200">สร้างภาพพุทธศิลป์</div><div class="text-[9px] text-gray-500">สไตล์สมจริง</div></div>
                     </div>
-                    <div class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/20 cursor-pointer hover:bg-purple-950/10 transition flex items-center gap-2.5">
+                    <div onclick="fillPrompt('แปลภาษา ไทย -> อังกฤษ')" class="bg-[#0e071c]/80 border border-purple-950/60 p-3 rounded-2xl hover:border-purple-500/30 cursor-pointer hover:bg-purple-950/20 transition flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-xl bg-indigo-950/40 text-indigo-400 flex items-center justify-center text-sm"><i data-lucide="languages" class="w-4 h-4"></i></div>
-                        <div>
-                            <div class="text-[11px] font-medium text-gray-200">แปลภาษา</div>
-                            <div class="text-[9px] text-gray-500">ไทย -> อังกฤษ</div>
-                        </div>
+                        <div><div class="text-[11px] font-medium text-gray-200">แปลภาษา</div><div class="text-[9px] text-gray-500">ไทย -> อังกฤษ</div></div>
                     </div>
                 </div>
             </div>
 
-            <div class="w-full flex flex-col items-center gap-4 z-10">
+            <!-- Bottom Disclaimer and Quick Button -->
+            <div class="w-full flex flex-col items-center gap-2 flex-shrink-0 z-10">
                 <div class="flex items-center gap-1 text-[11px] text-gray-600 bg-black/20 px-3 py-1 rounded-full border border-purple-950/20">
                     <i data-lucide="info" class="w-3.5 h-3.5"></i> Dragy AI อาจให้ข้อมูลที่ไม่ถูกต้อง โปรดตรวจสอบความถูกต้องอีกครั้ง
                 </div>
-                
-                <div class="animate-bounce p-1.5 bg-[#170e2b] border border-purple-950 rounded-full cursor-pointer hover:bg-[#23173d]">
-                    <div class="w-8 h-8 flex items-center justify-center text-sm text-purple-400 font-bold bg-purple-950/30 rounded-full shadow-inner">ॐ</div>
+                <!-- Bottom Decorative Quick Icon -->
+                <div class="p-1.5 bg-[#170e2b] border border-purple-950 rounded-full cursor-pointer hover:bg-[#23173d] transition">
+                    <div class="w-6 h-6 flex items-center justify-center text-xs text-purple-400 font-bold bg-purple-950/30 rounded-full">ॐ</div>
                 </div>
             </div>
 
+            <!-- Fixed Circle Floating Helper Button Right Corner -->
             <button class="absolute bottom-6 right-6 w-10 h-10 bg-[#120a21] border border-purple-950/80 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-300 transition shadow-lg"><i data-lucide="help-circle" class="w-5 h-5"></i></button>
         </main>
 
+        <!-- ================= JAVASCRIPT FOR REAL-TIME INTERACTION ================= -->
         <script>
             lucide.createIcons();
+
+            const userInput = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
+            const chatBox = document.getElementById('chat-box');
+            const welcomeView = document.getElementById('welcome-view');
+            const suggestionsBox = document.getElementById('suggestions-box');
+            const mainScrollArea = document.getElementById('main-scroll-area');
+
+            // ฟังก์ชันคลิกเลือกกล่องแนะนำ (Quick Prompt)
+            function fillPrompt(text) {
+                userInput.value = text;
+                userInput.focus();
+            }
+
+            // ฟังก์ชันจัดการส่งข้อความ
+            function handleSend() {
+                const text = userInput.value.trim();
+                if (!text) return;
+
+                // ซ่อน Banner ยินดีต้อนรับ และเมนูแนะนำเพื่อเริ่มการแชท
+                welcomeView.classList.add('hidden');
+                suggestionsBox.classList.add('hidden');
+                chatBox.classList.remove('hidden');
+
+                // 1. เพิ่มกล่องข้อความของผู้ใช้ (User)
+                const userMsg = document.createElement('div');
+                userMsg.className = 'flex flex-col items-end w-full mb-4';
+                userMsg.innerHTML = `
+                    <div class="bg-purple-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[80%] shadow-md">
+                        ${text.replace(/\\n/g, '<br>')}
+                    </div>
+                `;
+                chatBox.appendChild(userMsg);
+
+                // เคลียร์ช่องพิมพ์ข้อมูล
+                userInput.value = '';
+
+                // เลื่อนหน้าต่างลงไปข้างล่างสุดอัตโนมัติ
+                mainScrollArea.scrollTop = mainScrollArea.scrollHeight;
+
+                // 2. จำลองการตอบกลับของ AI (Mock Response)
+                setTimeout(() => {
+                    const aiMsg = document.createElement('div');
+                    aiMsg.className = 'flex flex-col items-start w-full mb-4';
+                    aiMsg.innerHTML = `
+                        <div class="flex items-center gap-2 mb-1.5 text-xs text-purple-400">
+                            <div class="w-5 h-5 bg-gradient-to-tr from-purple-600 to-indigo-500 rounded flex items-center justify-center font-bold text-white text-[10px]">D</div>
+                            <span>Dragy AI (Grok 3)</span>
+                        </div>
+                        <div class="bg-[#130b24] border border-purple-950 text-gray-200 px-4 py-2.5 rounded-2xl rounded-tl-none max-w-[80%] shadow-md">
+                            ระบบได้รับข้อความ: "${text}" เรียบร้อยแล้วครับ ข้อมูลส่วนนี้กำลังเชื่อมต่อฐานข้อมูลหลักเพื่อประมวลผลเต็มรูปแบบในขั้นตอนถัดไปครับ 🚀
+                        </div>
+                    `;
+                    chatBox.appendChild(aiMsg);
+                    mainScrollArea.scrollTop = mainScrollArea.scrollHeight;
+                }, 800);
+            }
+
+            // สั่งส่งผ่านการกดปุ่ม
+            sendBtn.addEventListener('click', handleSend);
+
+            // สั่งส่งผ่านการกดปุ่ม Enter (ยกเว้นกด Shift + Enter เพื่อขึ้นบรรทัดใหม่)
+            userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                }
+            });
         </script>
     </body>
     </html>"""
