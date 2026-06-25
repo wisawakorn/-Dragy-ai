@@ -6,13 +6,13 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 
-app = FastAPI(title="ॐ DRAGY AI - Stable Edition")
+app = FastAPI(title="ॐ DRAGY AI - Next Gen")
 
 # ดึงสิทธิ์ความปลอดภัยผ่าน Environment Variable ของ Render
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 GLOBAL_QUOTA = {
-    "chat_used": 25,
+    "chat_used": 26,
     "chat_limit": 50
 }
 
@@ -22,13 +22,13 @@ class ChatMessage(BaseModel):
 
 class ChatPayload(BaseModel):
     message: str
-    model: Optional[str] = "Gemini 1.5 Flash"
+    model: Optional[str] = "Gemini 3.5 Flash"
     deep_search: Optional[bool] = False
     think_mode: Optional[bool] = False
     history: List[ChatMessage] = []
 
 # =====================================================================
-# 🤖 BACKEND API: เพิ่มระบบหมุนเวียนโมเดลและกู้คืนคำขอเมื่อเซิร์ฟเวอร์หนาแน่น
+# 🤖 BACKEND API: อัปเกรดเป็น Gemini 3.5 และระบบสำรองที่เสถียรขึ้น
 # =====================================================================
 @app.post("/api/chat")
 async def ai_chat_endpoint(payload: ChatPayload):
@@ -38,12 +38,12 @@ async def ai_chat_endpoint(payload: ChatPayload):
     if not GEMINI_API_KEY:
         return JSONResponse(
             status_code=200, 
-            content={"reply": "⚠️ ตรวจไม่พบ <code>GEMINI_API_KEY</code> ในระบบกรุณาตั้งค่าใน Environment ของ Render ครับ"}
+            content={"reply": "⚠️ ไม่พบ <code>GEMINI_API_KEY</code> บน Render! กรุณาตรวจสอบแท็บ Environment ครับ"}
         )
 
     GLOBAL_QUOTA["chat_used"] += 1
     
-    system_instruction = "คุณคือ ॐ DRAGY AI แพลตฟอร์มปัญญาประดิษฐ์สร้างสรรค์งานพุทธศิลป์และให้ความรู้ ตอบเป็นภาษาไทยอย่างสละสลวย"
+    system_instruction = "คุณคือ ॐ DRAGY AI ปัญญาประดิษฐ์ผู้เชี่ยวชาญระดับสูงด้านพุทธศิลป์ ความรู้ทั่วไป วิดีโอ และการสร้างสรรค์คอนเทนต์ จงตอบคำถามเป็นภาษาไทยอย่างสละสลวยและเป็นมืออาชีพ"
     
     contents_payload = []
     for msg in payload.history:
@@ -57,26 +57,26 @@ async def ai_chat_endpoint(payload: ChatPayload):
         "parts": [{"text": payload.message}]
     })
 
-    # รายชื่อโมเดลสำรองกรณีโมเดลหลัก (Flash) เกิด High Demand หรือล่ม
+    # ปรับมาใช้โมเดลยุค 3.5 และมีโมเดลอื่นสลับสับเปลี่ยนกรณีฉุกเฉิน
     models_to_try = [
-        "gemini-1.5-flash", 
-        "gemini-1.5-pro"
+        "gemini-3.5-flash",    # โมเดลหลัก: เร็ว เสถียร ฉลาด และรองรับ API ปัจจุบันได้สมบูรณ์ที่สุด
+        "gemini-2.5-flash",      # โมเดลสำรอง 1: สำหรับการวิเคราะห์เชิงลึก
+        "gemini-3.1-flash-latest" # โมเดลสำรอง 2: เวอร์ชันปรับปรุงปลายปีของรุ่น 1.5
     ]
     
     ai_reply = ""
     success = False
 
-    # ระบบ Retry & Failover Loop
     for model_name in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
         headers = {"Content-Type": "application/json"}
         body = {
             "contents": contents_payload,
             "systemInstruction": { "parts": [{"text": system_instruction}] },
-            "generationConfig": { "temperature": 0.7, "maxOutputTokens": 2048 }
+            "generationConfig": { "temperature": 0.7, "maxOutputTokens": 4096 }
         }
 
-        for attempt in range(2): # ลองใหม่สูงสุด 2 ครั้งต่อโมเดล
+        for attempt in range(2):
             try:
                 response = requests.post(url, headers=headers, json=body, timeout=15)
                 response_json = response.json()
@@ -88,13 +88,11 @@ async def ai_chat_endpoint(payload: ChatPayload):
                         success = True
                         break
                 
-                # หากเจอข้อผิดพลาดรุ่นหนาแน่น (High Demand / Resource Exhausted) ให้หลุดไปลองโมเดลถัดไป
+                # หาก API ตอบกลับมาว่าโมเดลนั้นใช้งานไม่ได้หรือล่ม ให้สลับไปรุ่นถัดไปในลิสต์ทันที
                 if "error" in response_json:
-                    err_msg = response_json["error"].get("message", "")
-                    if "demand" in err_msg.lower() or "quota" in err_msg.lower():
-                        break # สลับรุ่นโมเดลทันที
+                    break
                         
-                time.sleep(1) # พักหน่วงเวลาก่อนลองซ้ำชั่วคราว
+                time.sleep(1)
             except Exception:
                 pass
         
@@ -102,7 +100,7 @@ async def ai_chat_endpoint(payload: ChatPayload):
             break
 
     if not success:
-        ai_reply = "⚠️ <b>เซิร์ฟเวอร์ Google Gemini กำลังมีผู้ใช้งานหนาแน่นมากในขณะนี้</b><br>ระบบพยายามเชื่อมต่อโมเดลสำรองแล้วยังไม่สำเร็จ โปรดรอสักครู่แล้วส่งข้อความใหม่อีกครั้งครับพี่ยอดชาย"
+        ai_reply = "🔱 <b>ระบบเครือข่ายของ Google Gemini ขัดข้องชั่วคราว</b><br>เนื่องจากมีการปรับปรุงเซิร์ฟเวอร์หลัก ยอดชายโปรดลองส่งข้อความใหม่อีกครั้งในอีกไม่กี่วินาทีข้างหน้าครับ"
 
     return {
         "reply": ai_reply,
@@ -156,7 +154,7 @@ async def home():
                 </div>
                 <div class="flex justify-between text-[11px] text-gray-500">
                     <span>ข้อความแชท</span>
-                    <span id="quota-txt">25 / 50</span>
+                    <span id="quota-txt">26 / 50</span>
                 </div>
             </div>
         </aside>
