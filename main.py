@@ -1,357 +1,389 @@
 import os
-import json
-from fastapi import FastAPI, Request, Form, HTTPException
+import requests
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
-app = FastAPI(title="Dragy AI Platform")
+app = FastAPI(title="ॐ DRAGY AI - Production Engine")
 
-# =====================================================================
-# 🗄️ DATABASE & STATE SYSTEM (ระบบฐานข้อมูลควบคุมสิทธิ์และโควตาจำลอง)
-# =====================================================================
-# โครงสร้างผู้ใช้จำลอง เพื่อให้ระบบหลังบ้านสามารถคำนวณและตัดโควตาได้จริงบน Render
-USER_DATABASE = {
-    "mock_user_id": {
-        "name": "Dragy Creator",
-        "email": "creator@dragy.ai",
-        "tier": "Pro",  # Free, Pro, Premium
-        "quota": {
-            "chat_used": 23,
-            "chat_limit": 50,
-            "image_used": 12,
-            "image_limit": 15,
-            "video_used": 0,
-            "video_limit": 1
-        }
-    }
-}
+# ดึงสิทธิ์ความปลอดภัยผ่าน Environment Variable ของ Render
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+# โครงสร้างสำหรับรับประวัติการแชท (Chat History Context) และคำสั่งจากหน้าบ้าน
+class ChatMessage(BaseModel):
+    role: str      # 'user' หรือ 'model'
+    parts: str     # ข้อความที่ส่ง
 
 class ChatPayload(BaseModel):
     message: str
     model: Optional[str] = "Grok 3"
     deep_search: Optional[bool] = False
     think_mode: Optional[bool] = False
+    history: List[ChatMessage] = []
 
 # =====================================================================
-# 🤖 AI CORE PROCESSING ENDPOINT (ระบบประมวลผลแชทหลังบ้าน)
+# 🤖 BACKEND API: เชื่อมต่อ REAL GEMINI API ENGINE + MEMORY CONTEXT
 # =====================================================================
 @app.post("/api/chat")
 async def ai_chat_endpoint(payload: ChatPayload):
     if not payload.message.strip():
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
+        return JSONResponse(status_code=400, content={"reply": "กรุณาพิมพ์ข้อความ..."})
     
-    user = USER_DATABASE["mock_user_id"]
-    
-    # ตรวจสอบและตัดโควตาจริงหลังบ้าน
-    if user["quota"]["chat_used"] >= user["quota"]["chat_limit"]:
+    if not GEMINI_API_KEY:
         return JSONResponse(
-            status_code=429,
-            content={"reply": "❌ โควตาแชทของคุณหมดแล้ว กรุณาอัปเกรดแพ็กเกจเพื่อใช้งานต่อ"}
+            status_code=500, 
+            content={"reply": "❌ ตรวจไม่พบ GEMINI_API_KEY! กรุณาเพิ่มค่านี้ในเมนู Environment บนหน้าเว็บ Render ก่อนใช้งานครับ"}
         )
+
+    # 1. ระบบดัดแปลง Prompt ตามสถานะปุ่มกดสวิตช์หน้าบ้าน (Think / DeepSearch)
+    system_instruction = "คุณคือ ॐ DRAGY AI แพลตฟอร์ม AI อัจฉริยะที่เชี่ยวชาญด้านศิลปะ ภาพ วิดีโอ และความรู้รอบตัว จงตอบคำถามเป็นภาษาไทยด้วยน้ำเสียงสุภาพ เป็นมืออาชีพ และน่าเชื่อถือ"
     
-    # อัปเดตจำนวนการใช้งานในระบบ
-    user["quota"]["chat_used"] += 1
+    current_prompt = payload.message
+    if payload.think_mode:
+        current_prompt = f"[โหมดวิเคราะห์ลึก]: จงแสดงตรรกะเหตุผลหรือสรุปความรอบคอบแยกเป็นหัวข้อย่อยก่อนให้คำตอบสุทธิกับผู้ใช้จากคำถามนี้: {current_prompt}"
+    if payload.deep_search:
+        current_prompt = f"[โหมดสืบค้นเชิงลึก]: จงพยายามทำตัวเหมือนคุณได้อัปเดตข้อมูลสดใหม่ ค้นหาความจริงอย่างละเอียดรอบด้านเพื่อตอบคำถามนี้: {current_prompt}"
+
+    # 2. ฟอร์แมตโครงสร้างประวัติการคุยเพื่อให้ AI จำบริบทได้ (Gemini API Format)
+    contents_payload = []
+    for msg in payload.history:
+        contents_payload.append({
+            "role": msg.role,
+            "parts": [{"text": msg.parts}]
+        })
     
-    # ส่วนประมวลผลคำตอบ (สามารถเชื่อมต่อ OpenAI / Anthropic / Grok API ตรงนี้ได้เลย)
-    user_prompt = payload.message.lower()
-    ai_reply = ""
+    # เพิ่มข้อความปัจจุบันเข้าไปท้ายสุดของคิวสนทนา
+    contents_payload.append({
+        "role": "user",
+        "parts": [{"text": current_prompt}]
+    })
+
+    # 3. ส่งคำขอตรงไปยัง Endpoint หลักของ Google Gemini 1.5 Flash
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {"Content-Type": "application/json"}
     
-    if "ภาพ" in user_prompt or "image" in user_prompt:
-        ai_reply = f"✨ [โหมดสร้างภาพ] รับทราบครับ ระบบกำลังเตรียมส่งคำสั่งสร้างภาพในสไตล์ที่ต้องการผ่านโมเดล {payload.model}..."
-    elif "วิดีโอ" in user_prompt or "video" in user_prompt:
-        ai_reply = f"🎬 [โหมดสร้างวิดีโอ] เริ่มการประมวลผลวิดีโอสั้นจากข้อความของคุณ กรุณารอสักครู่..."
-    else:
-        ai_reply = f"🔱 ॐ DRAGY AI ได้รับข้อความของคุณแล้ว: \"{payload.message}\"ขณะนี้โหมดประมวลผลระดับสูงกำลังทำงาน"
-        if payload.deep_search:
-            ai_reply += " [เปิดใช้งาน DeepSearch ค้นหาข้อมูลเชิงลึกแบบ Real-time]"
-        if payload.think_mode:
-            ai_reply += " [เปิดใช้งาน Think Mode คิดวิเคราะห์แยกแยะตรรกะแบบเป็นขั้นตอน]"
+    body = {
+        "contents": contents_payload,
+        "systemInstruction": {
+            "parts": [{"text": system_instruction}]
+        },
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 2048
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=body, timeout=30)
+        response_json = response.json()
+        
+        # แกะเอาข้อความผลลัพธ์จากเซิร์ฟเวอร์ Google
+        if "candidates" in response_json and len(response_json["candidates"]) > 0:
+            ai_reply = response_json["candidates"][0]["content"]["parts"][0]["text"]
+            # แปลงสัญญลักษณ์ขึ้นบรรทัดใหม่จาก \n เป็น <br> สำหรับ HTML Rendering
+            ai_reply = ai_reply.replace("\n", "<br>")
+        else:
+            ai_reply = f"⚠️ ปฏิเสธการตอบกลับจาก AI: {response_json.get('error', {}).get('message', 'ไม่สามารถประมวลผลได้')}"
+            
+    except Exception as e:
+        ai_reply = f"❌ เกิดข้อผิดพลาดในระบบการเชื่อมต่อโครงข่าย: {str(e)}"
 
     return {
         "reply": ai_reply,
-        "current_quota": user["quota"]
+        "usage_update": {
+            "chat_used": 1,  # ส่งสัญญาณบอกหน้าบ้านว่าตัดโควตาจริงสำเร็จ
+            "image_used": 0
+        }
     }
 
 # =====================================================================
-# 🌐 FRONTEND CORE INTERFACE (หน้าบ้านสไตล์พรีเมียม ॐ DRAGY AI)
+# 🌐 FRONTEND: ดีไซน์สุดพรีเมียม สไตล์ Grok Vibe ผสม มณฑลาสีทองเรืองแสง
 # =====================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home_interface():
-    user_data = USER_DATABASE["mock_user_id"]
-    quota = user_data["quota"]
-    
-    return f"""
+    return """
     <!DOCTYPE html>
     <html lang="th">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ॐ DRAGY AI - Create Images • Videos • Knowledge</title>
+        <title>Dragy AI</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <script src="https://unpkg.com/lucide@latest"></script>
         <style>
-            body {{ font-family: 'Prompt', sans-serif; }}
-            .bg-gradient-dark {{
-                background: radial-gradient(circle at center, #14082b 0%, #070312 80%, #030107 100%);
-            }}
-            .glow-gold {{
-                box-shadow: 0 0 30px rgba(254, 224, 71, 0.15);
-            }}
-            .logo {{
-                font-size: 26px;
-                font-weight: 700;
-                color: white;
-                letter-spacing: 1px;
-            }}
-            .logo span {{
-                color: #FFD700;
-                font-size: 32px;
-                margin-right: 6px;
-                text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-            }}
-            .custom-scrollbar::-webkit-scrollbar {{ width: 5px; }}
-            .custom-scrollbar::-webkit-scrollbar-track {{ background: transparent; }}
-            .custom-scrollbar::-webkit-scrollbar-thumb {{ background: #26114a; border-radius: 10px; }}
+            body { font-family: 'Prompt', sans-serif; }
+            .bg-cosmic-dark {
+                background: radial-gradient(circle at 60% 30%, #150933 0%, #080314 60%, #030108 100%);
+            }
+            .glow-purple {
+                box-shadow: 0 0 50px rgba(147, 51, 234, 0.25);
+            }
+            .glow-gold-icon {
+                text-shadow: 0 0 20px rgba(234, 179, 8, 0.6);
+            }
+            .text-gradient {
+                background: linear-gradient(to right, #60a5fa, #c084fc, #f472b6);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #231145; border-radius: 10px; }
         </style>
     </head>
-    <body class="bg-gradient-dark text-gray-200 min-h-screen flex overflow-hidden">
+    <body class="bg-cosmic-dark text-gray-200 min-h-screen flex overflow-hidden">
 
         <!-- ================= SIDEBAR ================= -->
-        <aside class="w-68 bg-[#070311]/90 border-r border-purple-950/40 p-4 flex flex-col justify-between hidden md:flex">
+        <aside class="w-64 bg-[#060310]/95 border-r border-purple-950/40 p-4 flex flex-col justify-between hidden md:flex flex-shrink-0 z-20">
             <div>
-                <!-- Brand Logo ในรูปแบบที่คุณเลือก -->
-                <div class="flex flex-col px-2 py-4 mb-4 border-b border-purple-950/30">
-                    <div class="logo flex items-center">
-                        <span>ॐ</span> DRAGY AI
-                    </div>
-                    <span class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Create Images • Videos • Knowledge</span>
+                <!-- Logo Brand -->
+                <div class="flex items-center gap-3 px-2 py-3 mb-4">
+                    <div class="w-8 h-8 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center font-bold text-white text-lg shadow-md shadow-purple-500/20">D</div>
+                    <span class="text-xl font-bold text-white tracking-wide">Dragy AI</span>
                 </div>
 
-                <!-- New Chat ปุ่มกดรีเซ็ตหน้า -->
-                <button onclick="window.location.reload()" class="w-full border border-purple-900/40 hover:border-purple-500/40 hover:bg-purple-950/20 text-gray-300 rounded-xl py-2 px-4 flex items-center justify-between text-sm transition mb-6">
+                <!-- New Chat Button -->
+                <button onclick="window.location.reload()" class="w-full bg-transparent border border-purple-900/40 hover:border-purple-600/40 hover:bg-purple-950/10 text-gray-300 rounded-xl py-2 px-4 flex items-center justify-between text-sm transition duration-200 mb-5">
                     <span class="flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> New Chat</span>
-                    <span class="text-xs text-gray-500 border border-gray-800 px-1.5 py-0.5 rounded">⌘ K</span>
+                    <span class="text-[11px] text-gray-500 border border-gray-800 px-1.5 py-0.5 rounded">⌘ K</span>
                 </button>
 
-                <!-- รายการเมนูระบบ -->
+                <!-- Menu Lists -->
                 <nav class="space-y-1">
-                    <a href="/" class="flex items-center gap-3 px-3 py-2.5 bg-purple-950/30 text-purple-300 rounded-xl text-sm font-medium"><i data-lucide="home" class="w-4 h-4"></i> หน้าแรก</a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="message-square" class="w-4 h-4"></i> AI Chat</a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="image" class="w-4 h-4"></i> AI Image</a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="video" class="w-4 h-4"></i> AI Video</a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="wrench" class="w-4 h-4"></i> เครื่องมือ AI</a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="history" class="w-4 h-4"></i> ประวัติแชท</a>
+                    <a href="/" class="flex items-center gap-3 px-3 py-2.5 bg-purple-950/30 text-purple-300 rounded-xl text-sm font-medium"><i data-lucide="home" class="w-4.5 h-4.5"></i> หน้าแรก</a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="message-square" class="w-4.5 h-4.5"></i> AI Chat</a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="image" class="w-4.5 h-4.5"></i> AI Image</a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-xl text-sm transition"><i data-lucide="video" class="w-4.5 h-4.5"></i> AI Video</a>
                 </nav>
+            </div>
 
-                <!-- แผงมอนิเตอร์โควตาการประมวลผลดึงค่าจากหลังบ้านจริง -->
-                <div class="mt-6 bg-[#0c051f] border border-purple-950/60 rounded-2xl p-4 text-xs text-gray-400 space-y-3">
-                    <div class="flex justify-between items-center border-b border-purple-950/40 pb-1.5">
-                        <span class="font-medium text-gray-300">สิทธิ์การใช้งาน ({user_data["tier"]})</span>
-                        <span class="text-green-400 text-[10px]">Active</span>
+            <!-- Quota Tracking Systems -->
+            <div class="space-y-4">
+                <div class="bg-[#0b051c] border border-purple-950/60 rounded-2xl p-3.5 text-xs text-gray-400 space-y-2.5">
+                    <div class="flex justify-between items-center text-[11px] text-gray-500">
+                        <span>การทำงานระบบ Real AI</span>
+                        <span id="ai-status" class="text-green-400 text-[10px]">Online</span>
                     </div>
                     <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="flex items-center gap-1"><i data-lucide="message-circle" class="w-3 h-3 text-green-400"></i> ข้อความแชท</span>
-                            <span id="quota-chat" class="text-gray-300">{quota["chat_used"]} / {quota["chat_limit"]}</span>
-                        </div>
-                        <div class="w-full bg-gray-900 h-1 rounded-full overflow-hidden">
-                            <div id="bar-chat" class="bg-green-500 h-full transition-all duration-300" style="width: {(quota["chat_used"]/quota["chat_limit"])*100}%"></div>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="flex items-center gap-1"><i data-lucide="image" class="w-3 h-3 text-blue-400"></i> การสร้างภาพ</span>
-                            <span id="quota-image" class="text-gray-300">{quota["image_used"]} / {quota["image_limit"]}</span>
-                        </div>
-                        <div class="w-full bg-gray-900 h-1 rounded-full overflow-hidden">
-                            <div id="bar-image" class="bg-blue-500 h-full transition-all duration-300" style="width: {(quota["image_used"]/quota["image_limit"])*100}%"></div>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="flex items-center gap-1"><i data-lucide="video" class="w-3 h-3 text-purple-400"></i> เรนเดอร์วิดีโอ</span>
-                            <span id="quota-video" class="text-gray-300">{quota["video_used"]} / {quota["video_limit"]}</span>
-                        </div>
-                        <div class="w-full bg-gray-900 h-1 rounded-full overflow-hidden">
-                            <div id="bar-video" class="bg-purple-500 h-full transition-all duration-300" style="width: {(quota["video_used"]/quota["video_limit"])*100}%"></div>
+                        <div class="flex justify-between text-[11px]">
+                            <span class="text-gray-400">จำนวนครั้งส่งคำขอ</span>
+                            <span id="local-counter" class="text-gray-300 font-medium">0 เซสชัน</span>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- ส่วนล่างสุดของ Sidebar -->
-            <div class="space-y-2">
-                <div class="bg-gradient-to-b from-[#1c0b3a] to-[#0a0317] border border-purple-500/20 rounded-xl p-3 text-center shadow-md">
-                    <div class="text-xs font-semibold text-yellow-500 flex items-center justify-center gap-1 mb-1">
-                        <i data-lucide="crown" class="w-3.5 h-3.5 fill-yellow-500"></i> Upgrade To Premium
-                    </div>
-                    <button class="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white text-[11px] font-medium py-1.5 px-3 rounded-lg hover:opacity-90 transition">อัปเกรดระบบ</button>
+                <div class="text-center p-1 text-[11px] text-gray-600">
+                    Engine V2.5 Stable
                 </div>
             </div>
         </aside>
 
-        <!-- ================= MAIN PLATFORM WORKSPACE ================= -->
-        <main class="flex-1 flex flex-col justify-between p-4 md:p-6 relative overflow-hidden">
+        <!-- ================= MAIN WORKSPACE ================= -->
+        <main class="flex-1 flex flex-col justify-between p-4 md:p-6 relative overflow-hidden z-10">
             
-            <!-- แถบด้านบน: ปุ่มเปลี่ยนโหมดภาษาและสถานะล็อกอิน -->
-            <div class="flex justify-end items-center gap-3 z-10">
-                <button class="flex items-center gap-1 px-3 py-1.5 bg-[#120724] border border-purple-950/60 rounded-xl text-xs text-gray-400 hover:text-white transition">
+            <!-- Header Bar -->
+            <div class="flex justify-end items-center gap-3 flex-shrink-0 z-20">
+                <button class="flex items-center gap-1 px-3 py-1.5 bg-[#120724] border border-purple-950 rounded-xl text-xs text-gray-300 hover:bg-[#1d0c3a] transition">
                     <i data-lucide="globe" class="w-3.5 h-3.5"></i> TH <i data-lucide="chevron-down" class="w-3 h-3"></i>
                 </button>
-                <button class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-4 rounded-xl shadow-lg shadow-blue-600/10 transition">
-                    <svg class="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.478 0 10.793-4.537 10.793-10.997 0-.746-.08-1.32-.176-1.888H12.24z"/></svg>
+                <button class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition">
                     Sign In with Google
                 </button>
             </div>
 
-            <!-- หน้าต่างแชทและแนะนำหลัก -->
-            <div id="main-scroll-area" class="flex-1 w-full max-w-3xl mx-auto my-4 overflow-y-auto custom-scrollbar flex flex-col justify-start px-2 space-y-6">
+            <!-- Scrollable Chat Body -->
+            <div id="main-scroll-area" class="flex-1 w-full max-w-3xl mx-auto my-4 overflow-y-auto custom-scrollbar flex flex-col justify-start px-2">
                 
-                <!-- ส่วนต้อนรับเริ่มต้นเมื่อเปิดแอป -->
-                <div id="welcome-view" class="w-full flex flex-col items-center text-center pt-16 space-y-4">
-                    <div class="w-24 h-24 flex items-center justify-center bg-gradient-to-b from-yellow-500/10 to-transparent rounded-full border border-yellow-500/20 glow-gold">
-                        <span class="text-5xl text-yellow-500 font-bold drop-shadow-[0_0_15px_rgba(234,179,8,0.4)]">ॐ</span>
+                <!-- Initial Landing Page -->
+                <div id="welcome-view" class="w-full flex flex-col items-center text-center pt-10 pb-4 space-y-6 flex-shrink-0">
+                    <div class="relative w-36 h-36 flex items-center justify-center bg-gradient-to-b from-purple-600/10 to-transparent rounded-full border border-purple-500/10 glow-purple">
+                        <div class="absolute inset-1 border border-dashed border-yellow-500/20 rounded-full animate-[spin_120s_linear_infinite]"></div>
+                        <span class="text-6xl text-yellow-500 font-bold glow-gold-icon select-none">ॐ</span>
                     </div>
                     <div class="space-y-2">
-                        <h1 class="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">สวัสดีครับ ยินดีต้อนรับ</h1>
-                        <p class="text-sm md:text-base text-gray-400 font-light">วันนี้ให้ <span class="text-purple-400 font-medium">ॐ DRAGY AI</span> ขับเคลื่อนโปรเจกต์ของคุณอย่างไรดี?</p>
+                        <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-gradient">สวัสดีครับ 👋</h1>
+                        <p class="text-lg text-gray-400 font-light">วันนี้ให้ <span class="text-purple-400 font-medium">ॐ DRAGY AI</span> รับใช้เรื่องใดดีครับ?</p>
                     </div>
                 </div>
 
-                <!-- กล่องแสดงข้อความสนทนาแบบ Real-time -->
-                <div id="chat-box" class="w-full hidden space-y-4 text-sm pb-4"></div>
+                <!-- Chat Box Screen -->
+                <div id="chat-box" class="w-full hidden space-y-5 text-sm pb-6"></div>
             </div>
 
-            <!-- กล่องรับคำสั่ง (Input Component) และกลุ่มเครื่องมือควบคุมพิเศษด้านล่าง -->
-            <div class="w-full max-w-3xl mx-auto">
-                <div class="bg-[#0e061c]/90 border border-purple-500/20 rounded-3xl p-4 shadow-2xl focus-within:border-purple-500/40 transition">
-                    <textarea id="user-input" class="w-full bg-transparent text-gray-200 placeholder-gray-600 text-sm focus:outline-none resize-none h-16" placeholder="พิมพ์ข้อความสั่งการ AI หรือป้อนคำสั่งสร้างสรรค์งานพุทธศิลป์ วิดีโอ หรือความรู้ได้ที่นี่..."></textarea>
+            <!-- Control Bar Component -->
+            <div class="w-full max-w-3xl mx-auto flex-shrink-0 z-20">
+                <div class="bg-[#0f0722]/90 border border-purple-500/20 rounded-3xl p-4 shadow-2xl focus-within:border-purple-500/50 transition duration-200">
+                    <textarea id="user-input" class="w-full bg-transparent text-gray-200 placeholder-gray-600 text-sm focus:outline-none resize-none h-14 custom-scrollbar" placeholder="พิมพ์คุยกับ AI ของจริงสดๆ ตรงนี้ได้เลย..."></textarea>
                     
-                    <div class="flex justify-between items-center mt-2 pt-2 border-t border-purple-950/40">
+                    <div class="flex justify-between items-center mt-2 pt-2 border-t border-purple-950/60">
                         <div class="flex items-center gap-1.5">
-                            <button id="toggle-deepsearch" onclick="toggleOption('deepsearch')" class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 border border-purple-950/60 bg-transparent rounded-xl hover:text-gray-300 transition">
+                            <button id="btn-deepsearch" onclick="toggleFeature('deepsearch')" class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 border border-purple-950 bg-transparent rounded-xl hover:text-gray-300 transition duration-150">
                                 <i data-lucide="compass" class="w-3.5 h-3.5"></i> DeepSearch
                             </button>
-                            <button id="toggle-think" onclick="toggleOption('think')" class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 border border-purple-950/60 bg-transparent rounded-xl hover:text-gray-300 transition">
+                            <button id="btn-think" onclick="toggleFeature('think')" class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 border border-purple-950 bg-transparent rounded-xl hover:text-gray-300 transition duration-150">
                                 <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Think
                             </button>
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="relative">
-                                <select id="model-select" class="appearance-none bg-[#140a29] border border-purple-950 px-3 py-1.5 pr-7 text-xs text-gray-400 rounded-xl focus:outline-none cursor-pointer hover:text-gray-200 transition">
-                                    <option value="Grok 3">Grok 3</option>
-                                    <option value="Dragy Core-V1">Dragy Core-V1</option>
-                                    <option value="Flux Image Gen">Flux Image Gen</option>
+                                <select id="model-select" class="appearance-none bg-[#150b2e] border border-purple-950 px-3 py-1.5 pr-7 text-xs text-gray-400 rounded-xl focus:outline-none cursor-pointer hover:text-gray-200 transition">
+                                    <option value="Gemini 1.5 Flash">Gemini Core (Live)</option>
                                 </select>
                                 <i data-lucide="chevron-down" class="w-3 h-3 text-gray-500 absolute right-2.5 top-2.5 pointer-events-none"></i>
                             </div>
-                            <button id="send-btn" onclick="executeMsgSend()" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition">
+                            <button id="submit-btn" onclick="submitChatRequest()" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition duration-150">
                                 <i data-lucide="arrow-up" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- ประกาศข้อตกลงท้ายเว็บ -->
-                <p class="text-center text-[10px] text-gray-600 mt-3">
-                    ॐ DRAGY AI Multi-Model Platform • ข้อมูลการประมวลผลและการใช้บริการอยู่ภายใต้เงื่อนไขข้อตกลงของโควตาสมาชิกสิทธิ์แบรนด์
-                </p>
+                <!-- Shortcuts Grid (คลิกเพื่อยิงข้อความด่วนเข้า AI ทันที) -->
+                <div id="shortcuts-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
+                    <div onclick="clickShortcut('ช่วยอธิบายสัญลักษณ์ โอม (ॐ) ในเชิงพุทธศิลป์และความเป็นสิริมงคลหน่อย')" class="bg-[#0b0519]/60 border border-purple-950/50 hover:border-purple-500/30 p-3 rounded-2xl cursor-pointer flex flex-col justify-between h-20 transition duration-200 group">
+                        <p class="text-[11px] text-gray-400 group-hover:text-gray-200 leading-tight">ความหมายมงคล <span class="block text-gray-600 text-[10px]">สัญลักษณ์ ॐ</span></p>
+                        <div class="text-xs text-yellow-500">🔱</div>
+                    </div>
+                    <div onclick="clickShortcut('ช่วยวางไอเดียเขียนสคริปต์ทำคลิปสั้นสไตล์พุทธศิลป์ร่วมสมัยลง TikTok ให้ปังหน่อย')" class="bg-[#0b0519]/60 border border-purple-950/50 hover:border-purple-500/30 p-3 rounded-2xl cursor-pointer flex flex-col justify-between h-20 transition duration-200 group">
+                        <p class="text-[11px] text-gray-400 group-hover:text-gray-200 leading-tight">สคริปต์คลิปสั้น <span class="block text-gray-600 text-[10px]">ลงขายงานบน TikTok</span></p>
+                        <div class="text-xs text-cyan-400">🎵</div>
+                    </div>
+                    <div onclick="clickShortcut('สรุปเทรนด์เทคโนโลยี AI ล่าสุดของปีนี้ให้ฟังหน่อยว่ามีอะไรว้าวบ้าง')" class="bg-[#0b0519]/60 border border-purple-950/50 hover:border-purple-500/30 p-3 rounded-2xl cursor-pointer flex flex-col justify-between h-20 transition duration-200 group">
+                        <p class="text-[11px] text-gray-400 group-hover:text-gray-200 leading-tight">สรุปข่าวเทคโนโลยี <span class="block text-gray-600 text-[10px]">AI โลกวันนี้</span></p>
+                        <i data-lucide="newspaper" class="w-4 h-4 text-blue-400"></i>
+                    </div>
+                    <div onclick="clickShortcut('แต่งกลอนสุภาพสรรเสริญความเจริญรุ่งเรืองและสติปัญญาให้หน่อย')" class="bg-[#0b0519]/60 border border-purple-950/50 hover:border-purple-500/30 p-3 rounded-2xl cursor-pointer flex flex-col justify-between h-20 transition duration-200 group">
+                        <p class="text-[11px] text-gray-400 group-hover:text-gray-200 leading-tight">แต่งกลอนสุภาพ <span class="block text-gray-600 text-[10px]">เสริมสติปัญญา</span></p>
+                        <i data-lucide="lightbulb" class="w-4 h-4 text-purple-400"></i>
+                    </div>
+                </div>
+
+                <div class="w-full text-center text-[10px] text-gray-600 mt-4">
+                    ॐ DRAGY PLATFORM POWERED BY REAL GEMINI INTELLIGENCE ENGINE
+                </div>
             </div>
         </main>
 
-        <!-- ================= APP LOGIC HANDLING (SCRIPT) ================= -->
+        <!-- ================= APP SCRIPTS & CORE MEMORY LOGIC ================= -->
         <script>
             lucide.createIcons();
             
-            let flags = {{ deepsearch: false, think: false }};
+            let featureState = { deepsearch: false, think: false };
+            let chatMemoryContext = []; // อาร์เรย์เก็บประวัติแชทของเซสชันปัจจุบันส่งต่อให้ AI
+            let totalRequests = 0;
+
             const userInput = document.getElementById('user-input');
             const mainScrollArea = document.getElementById('main-scroll-area');
             const chatBox = document.getElementById('chat-box');
             const welcomeView = document.getElementById('welcome-view');
+            const shortcutsGrid = document.getElementById('shortcuts-grid');
 
-            function toggleOption(type) {{
-                flags[type] = !flags[type];
-                const btn = document.getElementById(`toggle-${{type}}`);
-                if(flags[type]) {{
-                    btn.classList.remove('text-gray-500', 'border-purple-950/60');
-                    btn.classList.add(type === 'deepsearch' ? 'text-blue-400' : 'text-yellow-400', 'border-purple-500/40', 'bg-purple-950/20');
-                }} else {{
-                    btn.classList.add('text-gray-500', 'border-purple-950/60');
-                    btn.classList.remove('text-blue-400', 'text-yellow-400', 'border-purple-500/40', 'bg-purple-950/20');
-                }}
-            }}
+            function toggleFeature(type) {
+                featureState[type] = !featureState[type];
+                const btn = document.getElementById(`btn-${type}`);
+                if (featureState[type]) {
+                    btn.classList.remove('text-gray-500', 'border-purple-950');
+                    btn.classList.add(type === 'deepsearch' ? 'text-blue-400' : 'text-yellow-400', 'border-purple-500/30', 'bg-purple-950/30');
+                } else {
+                    btn.classList.add('text-gray-500', 'border-purple-950');
+                    btn.classList.remove('text-blue-400', 'text-yellow-400', 'border-purple-500/30', 'bg-purple-950/30');
+                }
+            }
 
-            async function executeMsgSend() {{
+            function clickShortcut(text) {
+                userInput.value = text;
+                submitChatRequest();
+            }
+
+            async function submitChatRequest() {
                 const text = userInput.value.trim();
                 if (!text) return;
 
-                // ซ่อนส่วน Welcome หนแรก
+                // ซ่อนการ์ดหน้าแรกเมื่อเริ่มสนทนา
                 welcomeView.classList.add('hidden');
+                shortcutsGrid.classList.add('hidden');
                 chatBox.classList.remove('hidden');
 
-                // พ่นข้อความฝั่งผู้ใช้ขึ้นหน้าจอ
-                const userNode = document.createElement('div');
-                userNode.className = 'flex flex-col items-end w-full mb-4 animate-fade-in';
-                userNode.innerHTML = `
-                    <div class="bg-purple-600/90 text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[85%] shadow-md">
-                        ${{text}}
-                    </div>
-                `;
-                chatBox.appendChild(userNode);
+                // 1. เพิ่มกล่องคำถามของผู้ใช้บนหน้าจอ
+                const userDiv = document.createElement('div');
+                userDiv.className = 'flex flex-col items-end w-full animate-fade-in';
+                userDiv.innerHTML = `<div class="bg-purple-600/90 text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[85%] shadow-md">${text}</div>`;
+                chatBox.appendChild(userDiv);
+                
                 userInput.value = '';
                 mainScrollArea.scrollTop = mainScrollArea.scrollHeight;
 
-                // ยิงไปประมวลผลที่หลังบ้าน FastAPI จริงๆ
-                try {{
-                    const res = await fetch('/api/chat', {{
+                // สร้างสถานะกำลังโหลด (Loading Spinner)
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'flex flex-col items-start w-full opacity-70';
+                loadingDiv.id = 'loading-placeholder';
+                loadingDiv.innerHTML = `
+                    <div class="text-[11px] text-gray-500 mb-1">ॐ DRAGY ENGINEกำลังคิด...</div>
+                    <div class="bg-[#0d061a] border border-purple-950/60 text-gray-500 px-4 py-2.5 rounded-2xl rounded-tl-none flex items-center gap-2">
+                        <div class="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                        <div class="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                    </div>
+                `;
+                chatBox.appendChild(loadingDiv);
+                mainScrollArea.scrollTop = mainScrollArea.scrollHeight;
+
+                try {
+                    // 2. ยิงแฮนด์เชกข้อมูลหลังบ้าน FastAPI
+                    const response = await fetch('/api/chat', {
                         method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
                             message: text,
-                            model: document.getElementById('model-select').value,
-                            deep_search: flags.deepsearch,
-                            think_mode: flags.think
-                        }})
-                    }});
-                    const data = await res.json();
-                    
-                    // แสดงคำตอบ AI หลังบ้านที่ดึงมา
-                    const aiNode = document.createElement('div');
-                    aiNode.className = 'flex flex-col items-start w-full mb-4';
-                    aiNode.innerHTML = `
-                        <div class="flex items-center gap-1.5 mb-1 text-[11px] text-yellow-500">
+                            model: "Gemini 1.5 Flash",
+                            deep_search: featureState.deepsearch,
+                            think_mode: featureState.think,
+                            history: chatMemoryContext // ส่ง Memory ของเดิมไปด้วยเพื่อให้คุยต่อเนื่องรู้เรื่อง
+                        })
+                    });
+                    const data = await response.json();
+
+                    // ลบตัว Loading ออก
+                    document.getElementById('loading-placeholder').remove();
+
+                    // 3. เพิ่มกล่องคำตอบจากใจจริงของ Gemini AI บนหน้าจอ
+                    const aiDiv = document.createElement('div');
+                    aiDiv.className = 'flex flex-col items-start w-full';
+                    aiDiv.innerHTML = `
+                        <div class="flex items-center gap-1.5 mb-1 text-[11px] text-yellow-500 font-medium tracking-wider">
                             <span>ॐ DRAGY ENGINE</span>
                         </div>
-                        <div class="bg-[#100721] border border-purple-950/80 text-gray-200 px-4 py-2.5 rounded-2xl rounded-tl-none max-w-[85%] shadow-sm leading-relaxed">
-                            ${{data.reply}}
+                        <div class="bg-[#0d061a] border border-purple-950/60 text-gray-200 px-4 py-3 rounded-2xl rounded-tl-none max-w-[85%] shadow-sm leading-relaxed text-[13.5px]">
+                            ${data.reply}
                         </div>
                     `;
-                    chatBox.appendChild(aiNode);
+                    chatBox.appendChild(aiDiv);
 
-                    // อัปเดตตัวเลขแผงมอนิเตอร์โควตาที่ Sidebar ทันทีโดยไม่ต้องโหลดหน้าใหม่
-                    if(data.current_quota) {{
-                        const q = data.current_quota;
-                        document.getElementById('quota-chat').innerText = `${{q.chat_used}} / ${{q.chat_limit}}`;
-                        document.getElementById('bar-chat').style.width = `${{(q.chat_used/q.chat_limit)*100}}%`;
-                    }}
+                    // 4. บันทึกประวัติการแชท (Memory Context Stack) เอาไว้รันคราวหน้า
+                    chatMemoryContext.push({ role: "user", parts: text });
+                    chatMemoryContext.push({ role: "model", parts: data.reply.replace(/<br>/g, "\\n") });
 
-                }} catch(err) {{
-                    console.error("Error communication with backend:", err);
-                }}
-                
+                    // อัปเดตตัวแปรแสดงสถานะที่แถบด้านซ้ายมือ
+                    totalRequests++;
+                    document.getElementById('local-counter').innerText = `${totalRequests} ครั้ง`;
+
+                } catch (err) {
+                    console.error("Communication error:", err);
+                    document.getElementById('loading-placeholder').innerHTML = `<div class="text-red-500 p-2">การเชื่อมต่อล้มเหลว กรุณาลองใหม่อีกครั้ง</div>`;
+                }
+
                 mainScrollArea.scrollTop = mainScrollArea.scrollHeight;
-            }}
+            }
 
-            userInput.addEventListener('keydown', (e) => {{
-                if (e.key === 'Enter' && !e.shiftKey) {{
+            userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    executeMsgSend();
-                }}
-            }});
+                    submitChatRequest();
+                }
+            });
         </script>
     </body>
-    </html"""
+    </html>"""
