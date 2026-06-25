@@ -1,18 +1,18 @@
 import os
+import time
 import requests
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 
-app = FastAPI(title="ॐ DRAGY AI")
+app = FastAPI(title="ॐ DRAGY AI - Stable Edition")
 
 # ดึงสิทธิ์ความปลอดภัยผ่าน Environment Variable ของ Render
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-# ตัวแปรระบบจำลองโควตา
 GLOBAL_QUOTA = {
-    "chat_used": 24,
+    "chat_used": 25,
     "chat_limit": 50
 }
 
@@ -22,28 +22,28 @@ class ChatMessage(BaseModel):
 
 class ChatPayload(BaseModel):
     message: str
-    model: Optional[str] = "Gemini -3.5 Flash"
+    model: Optional[str] = "Gemini 1.5 Flash"
     deep_search: Optional[bool] = False
     think_mode: Optional[bool] = False
     history: List[ChatMessage] = []
 
 # =====================================================================
-# 🤖 BACKEND API
+# 🤖 BACKEND API: เพิ่มระบบหมุนเวียนโมเดลและกู้คืนคำขอเมื่อเซิร์ฟเวอร์หนาแน่น
 # =====================================================================
 @app.post("/api/chat")
 async def ai_chat_endpoint(payload: ChatPayload):
     if not payload.message.strip():
-        return JSONResponse(status_code=400, content={"reply": "กรุณาพิมพ์ข้อความ..."})
+        return JSONResponse(status_code=400, content={"reply": "กรุณาพิมพ์ข้อความก่อนส่งครับ"})
     
     if not GEMINI_API_KEY:
         return JSONResponse(
             status_code=200, 
-            content={"reply": "⚠️ ตรวจไม่พบ GEMINI_API_KEY บน Render! กรุณาเพิ่มค่านี้ในเมนู Environment ก่อนใช้งานครับ"}
+            content={"reply": "⚠️ ตรวจไม่พบ <code>GEMINI_API_KEY</code> ในระบบกรุณาตั้งค่าใน Environment ของ Render ครับ"}
         )
 
     GLOBAL_QUOTA["chat_used"] += 1
     
-    system_instruction = "คุณคือ ॐ DRAGY AI แพลตฟอร์ม AI อัจฉริยะที่เชี่ยวชาญด้านศิลปะ ภาพ วิดีโอ และความรู้รอบตัว จงตอบคำถามเป็นภาษาไทย"
+    system_instruction = "คุณคือ ॐ DRAGY AI แพลตฟอร์มปัญญาประดิษฐ์สร้างสรรค์งานพุทธศิลป์และให้ความรู้ ตอบเป็นภาษาไทยอย่างสละสลวย"
     
     contents_payload = []
     for msg in payload.history:
@@ -57,32 +57,52 @@ async def ai_chat_endpoint(payload: ChatPayload):
         "parts": [{"text": payload.message}]
     })
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
-    headers = {"Content-Type": "application/json"}
-    body = {
-        "contents": contents_payload,
-        "systemInstruction": { "parts": [{"text": system_instruction}] },
-        "generationConfig": { "temperature": 0.7, "maxOutputTokens": 2048 }
-    }
+    # รายชื่อโมเดลสำรองกรณีโมเดลหลัก (Flash) เกิด High Demand หรือล่ม
+    models_to_try = [
+        "gemini-1.5-flash", 
+        "gemini-1.5-pro"
+    ]
+    
+    ai_reply = ""
+    success = False
 
-    try:
-        response = requests.post(url, headers=headers, json=body, timeout=20)
-        response_json = response.json()
+    # ระบบ Retry & Failover Loop
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
+        headers = {"Content-Type": "application/json"}
+        body = {
+            "contents": contents_payload,
+            "systemInstruction": { "parts": [{"text": system_instruction}] },
+            "generationConfig": { "temperature": 0.7, "maxOutputTokens": 2048 }
+        }
+
+        for attempt in range(2): # ลองใหม่สูงสุด 2 ครั้งต่อโมเดล
+            try:
+                response = requests.post(url, headers=headers, json=body, timeout=15)
+                response_json = response.json()
+                
+                if "candidates" in response_json and len(response_json["candidates"]) > 0:
+                    candidate = response_json["candidates"][0]
+                    if "content" in candidate and "parts" in candidate["content"] and len(candidate["content"]["parts"]) > 0:
+                        ai_reply = candidate["content"]["parts"][0]["text"].replace("\n", "<br>")
+                        success = True
+                        break
+                
+                # หากเจอข้อผิดพลาดรุ่นหนาแน่น (High Demand / Resource Exhausted) ให้หลุดไปลองโมเดลถัดไป
+                if "error" in response_json:
+                    err_msg = response_json["error"].get("message", "")
+                    if "demand" in err_msg.lower() or "quota" in err_msg.lower():
+                        break # สลับรุ่นโมเดลทันที
+                        
+                time.sleep(1) # พักหน่วงเวลาก่อนลองซ้ำชั่วคราว
+            except Exception:
+                pass
         
-        if "candidates" in response_json and len(response_json["candidates"]) > 0:
-            candidate = response_json["candidates"][0]
-            if "content" in candidate and "parts" in candidate["content"] and len(candidate["content"]["parts"]) > 0:
-                ai_reply = candidate["content"]["parts"][0]["text"]
-                ai_reply = ai_reply.replace("\n", "<br>")
-            else:
-                ai_reply = f"⚠️ ได้รับโครงสร้างข้อมูลไม่สมบูรณ์จาก API: {str(response_json)}"
-        elif "error" in response_json:
-            ai_reply = f"❌ เกิดข้อผิดพลาดจาก Google Gemini API: {response_json['error'].get('message', 'ไม่ทราบสาเหตุ')}"
-        else:
-            ai_reply = "🔱 ระบบประมวลผลเสร็จสิ้น แต่ไม่มีเนื้อหาคำตอบส่งกลับมา"
-            
-    except Exception as e:
-        ai_reply = f"❌ เกิดข้อผิดพลาดชั่วคราว: {str(e)}"
+        if success:
+            break
+
+    if not success:
+        ai_reply = "⚠️ <b>เซิร์ฟเวอร์ Google Gemini กำลังมีผู้ใช้งานหนาแน่นมากในขณะนี้</b><br>ระบบพยายามเชื่อมต่อโมเดลสำรองแล้วยังไม่สำเร็จ โปรดรอสักครู่แล้วส่งข้อความใหม่อีกครั้งครับพี่ยอดชาย"
 
     return {
         "reply": ai_reply,
@@ -112,7 +132,6 @@ async def home():
     </head>
     <body class="text-gray-200 min-h-screen flex overflow-hidden">
 
-        <!-- SIDEBAR -->
         <aside class="w-64 bg-[#060310]/95 border-r border-purple-950/40 p-4 flex flex-col justify-between hidden md:flex flex-shrink-0">
             <div>
                 <div class="flex flex-col px-1 py-3 mb-4 border-b border-purple-950/30">
@@ -127,7 +146,6 @@ async def home():
                     <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 text-sm"><i data-lucide="image" class="w-4.5 h-4.5"></i> AI Image</a>
                     <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 text-sm"><i data-lucide="video" class="w-4.5 h-4.5"></i> AI Video</a>
                     <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 text-sm"><i data-lucide="wrench" class="w-4.5 h-4.5"></i> เครื่องมือ AI</a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-gray-400 text-sm"><i data-lucide="history" class="w-4.5 h-4.5"></i> ประวัติแชท</a>
                 </nav>
             </div>
             
@@ -138,12 +156,11 @@ async def home():
                 </div>
                 <div class="flex justify-between text-[11px] text-gray-500">
                     <span>ข้อความแชท</span>
-                    <span id="quota-txt">24 / 50</span>
+                    <span id="quota-txt">25 / 50</span>
                 </div>
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
         <main class="flex-1 flex flex-col justify-between p-4 md:p-6 overflow-hidden">
             <div class="flex justify-end items-center gap-3">
                 <button class="bg-blue-600 text-white text-xs font-medium py-2 px-4 rounded-xl shadow-lg">Sign In with Google</button>
@@ -158,14 +175,13 @@ async def home():
                 <div id="chat-box" class="w-full hidden space-y-4 text-sm pb-6"></div>
             </div>
 
-            <!-- INPUT BAR -->
             <div class="w-full max-w-3xl mx-auto">
                 <div class="bg-[#0f0722]/90 border border-purple-500/20 rounded-3xl p-4 flex flex-col gap-2">
-                    <textarea id="user-input" class="w-full bg-transparent text-gray-200 placeholder-gray-600 text-sm focus:outline-none resize-none h-12" placeholder="พิมพ์ข้อความสั่งการ AI หรือป้อนคำสั่งสร้างสรรค์งานพุทธศิลป์ วิดีโอ..."></textarea>
+                    <textarea id="user-input" class="w-full bg-transparent text-gray-200 placeholder-gray-600 text-sm focus:outline-none resize-none h-12" placeholder="พิมพ์ข้อความสั่งการ AI..."></textarea>
                     <div class="flex justify-between items-center border-t border-purple-950/60 pt-2">
                         <div class="flex gap-2 text-xs text-gray-500">
-                            <button id="btn-deep" class="px-2 py-1 bg-purple-950/40 rounded-lg flex items-center gap-1">🧭 DeepSearch</button>
-                            <button id="btn-think" class="px-2 py-1 bg-purple-950/40 rounded-lg flex items-center gap-1">💡 Think</button>
+                            <button class="px-2 py-1 bg-purple-950/40 rounded-lg flex items-center gap-1">🧭 DeepSearch</button>
+                            <button class="px-2 py-1 bg-purple-950/40 rounded-lg flex items-center gap-1">💡 Think</button>
                         </div>
                         <button onclick="sendPayload()" class="p-2 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition">
                             <i data-lucide="arrow-up" class="w-4 h-4"></i>
@@ -188,18 +204,16 @@ async def home():
                 const box = document.getElementById('chat-box');
                 box.classList.remove('hidden');
 
-                // บับเบิ้ลผู้ใช้ขวาบนตามโครงสร้างของไฟล์ image_74aab4.png
                 box.innerHTML += `<div class="flex justify-end mb-4"><div class="bg-purple-600 text-white px-4 py-2 rounded-2xl rounded-tr-none max-w-[85%]">${text}</div></div>`;
                 input.value = '';
 
-                // โหลดเดอร์แอนิเมชันตอนรอคำตอบจริง
                 const loadingId = "loader-" + Date.now();
                 box.innerHTML += `
                     <div id="${loadingId}" class="flex flex-col items-start mb-4">
-                        <div class="text-[11px] text-gray-500 mb-1">ॐ DRAGY ENGINE กําลังประมวลผล...</div>
+                        <div class="text-[11px] text-gray-500 mb-1">ॐ DRAGY ENGINE กำลังประมวลผลคำตอบ...</div>
                         <div class="bg-[#0d061a] border border-purple-950/60 px-4 py-2 rounded-2xl rounded-tl-none flex gap-1 items-center">
-                            <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce"></div>
-                            <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                            <div class="w-1.5 h-1.5 bg-purple-50 rounded-full animate-bounce"></div>
+                            <div class="w-1.5 h-1.5 bg-purple-50 rounded-full animate-bounce [animation-delay:0.2s]"></div>
                         </div>
                     </div>
                 `;
@@ -216,7 +230,6 @@ async def home():
                     const data = await res.json();
                     document.getElementById(loadingId).remove();
 
-                    // แสดงข้อความคำตอบจริงจากโมเดล AI
                     box.innerHTML += `
                         <div class="flex flex-col items-start mb-4">
                             <span class="text-[11px] text-yellow-500 font-medium mb-1">ॐ DRAGY ENGINE</span>
@@ -234,7 +247,7 @@ async def home():
                     }
                 } catch(e) {
                     if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-                    box.innerHTML += `<div class="text-red-400 text-xs mb-4">⚠️ เกิดข้อผิดพลาดระบบเครือข่ายปลายทาง</div>`;
+                    box.innerHTML += `<div class="text-red-400 text-xs mb-4">⚠️ ระบบขัดข้อง ไม่สามารถติดต่อหลังบ้านได้</div>`;
                 }
                 
                 s.scrollTop = s.scrollHeight;
