@@ -6,13 +6,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 
-app = FastAPI(title="ॐ DRAGY AI - Next Gen")
+app = FastAPI(title="ॐ DRAGY AI - Scroll Fix")
 
-# ดึงสิทธิ์ความปลอดภัยผ่าน Environment Variable ของ Render
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 GLOBAL_QUOTA = {
-    "chat_used": 26,
+    "chat_used": 27,
     "chat_limit": 50
 }
 
@@ -22,13 +21,13 @@ class ChatMessage(BaseModel):
 
 class ChatPayload(BaseModel):
     message: str
-    model: Optional[str] = "Gemini 3.5 Flash"
+    model: Optional[str] = "Gemini 2.5 Flash"
     deep_search: Optional[bool] = False
     think_mode: Optional[bool] = False
     history: List[ChatMessage] = []
 
 # =====================================================================
-# 🤖 BACKEND API: อัปเกรดเป็น Gemini 3.5 และระบบสำรองที่เสถียรขึ้น
+# 🤖 BACKEND API
 # =====================================================================
 @app.post("/api/chat")
 async def ai_chat_endpoint(payload: ChatPayload):
@@ -43,7 +42,7 @@ async def ai_chat_endpoint(payload: ChatPayload):
 
     GLOBAL_QUOTA["chat_used"] += 1
     
-    system_instruction = "คุณคือ ॐ DRAGY AI ปัญญาประดิษฐ์ผู้เชี่ยวชาญระดับสูงด้านพุทธศิลป์ ความรู้ทั่วไป วิดีโอ และการสร้างสรรค์คอนเทนต์ จงตอบคำถามเป็นภาษาไทยอย่างสละสลวยและเป็นมืออาชีพ"
+    system_instruction = "คุณคือ ॐ DRAGY AI ปัญญาประดิษฐ์ผู้เชี่ยวชาญระดับสูงด้านพุทธศิลป์ ความรู้ทั่วไป วิดีโอ และการสร้างสรรค์คอนเทนต์ จงตอบคำถามเป็นภาษาไทยอย่างสละสลวย"
     
     contents_payload = []
     for msg in payload.history:
@@ -57,11 +56,10 @@ async def ai_chat_endpoint(payload: ChatPayload):
         "parts": [{"text": payload.message}]
     })
 
-    # ปรับมาใช้โมเดลยุค 3.5 และมีโมเดลอื่นสลับสับเปลี่ยนกรณีฉุกเฉิน
     models_to_try = [
-        "gemini-3.5-flash",    # โมเดลหลัก: เร็ว เสถียร ฉลาด และรองรับ API ปัจจุบันได้สมบูรณ์ที่สุด
-        "gemini-2.5-flash",      # โมเดลสำรอง 1: สำหรับการวิเคราะห์เชิงลึก
-        "gemini-3.1-flash-latest" # โมเดลสำรอง 2: เวอร์ชันปรับปรุงปลายปีของรุ่น 1.5
+        "gemini-3.5-flash",
+        "gemini-2.5-flash",
+        "gemini-3.1-flash-litest"
     ]
     
     ai_reply = ""
@@ -88,11 +86,10 @@ async def ai_chat_endpoint(payload: ChatPayload):
                         success = True
                         break
                 
-                # หาก API ตอบกลับมาว่าโมเดลนั้นใช้งานไม่ได้หรือล่ม ให้สลับไปรุ่นถัดไปในลิสต์ทันที
                 if "error" in response_json:
                     break
                         
-                time.sleep(1)
+                time.sleep(0.5)
             except Exception:
                 pass
         
@@ -100,7 +97,7 @@ async def ai_chat_endpoint(payload: ChatPayload):
             break
 
     if not success:
-        ai_reply = "🔱 <b>ระบบเครือข่ายของ Google Gemini ขัดข้องชั่วคราว</b><br>เนื่องจากมีการปรับปรุงเซิร์ฟเวอร์หลัก ยอดชายโปรดลองส่งข้อความใหม่อีกครั้งในอีกไม่กี่วินาทีข้างหน้าครับ"
+        ai_reply = "🔱 <b>ระบบเครือข่ายขัดข้องชั่วคราว</b><br>โปรดลองใหม่อีกครั้งในอีกสักครู่ครับ"
 
     return {
         "reply": ai_reply,
@@ -108,7 +105,7 @@ async def ai_chat_endpoint(payload: ChatPayload):
     }
 
 # =====================================================================
-# 🌐 FRONTEND
+# 🌐 FRONTEND: แก้ไข Layout ให้แสดงผลตัวเลื่อนขึ้นลงหน้าจออัตโนมัติ
 # =====================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -126,11 +123,18 @@ async def home():
             body { font-family: 'Prompt', sans-serif; background: radial-gradient(circle at 60% 30%, #150933 0%, #080314 60%, #030108 100%); }
             .glow-gold-icon { text-shadow: 0 0 20px rgba(234, 179, 8, 0.6); }
             .text-gradient { background: linear-gradient(to right, #60a5fa, #c084fc, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+            
+            /* Custom Scrollbar ปรับแต่งแถบเลื่อนให้สวยงามเข้ากับธีมมืด */
+            ::-webkit-scrollbar { width: 6px; height: 6px; }
+            ::-webkit-scrollbar-track { background: rgba(15, 7, 34, 0.3); }
+            ::-webkit-scrollbar-thumb { background: rgba(147, 51, 234, 0.4); border-radius: 10px; }
+            ::-webkit-scrollbar-thumb:hover { background: rgba(147, 51, 234, 0.7); }
         </style>
     </head>
-    <body class="text-gray-200 min-h-screen flex overflow-hidden">
+    <body class="text-gray-200 h-screen w-screen flex overflow-hidden">
 
-        <aside class="w-64 bg-[#060310]/95 border-r border-purple-950/40 p-4 flex flex-col justify-between hidden md:flex flex-shrink-0">
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-[#060310]/95 border-r border-purple-950/40 p-4 flex flex-col justify-between hidden md:flex flex-shrink-0 h-full">
             <div>
                 <div class="flex flex-col px-1 py-3 mb-4 border-b border-purple-950/30">
                     <div class="text-2xl font-bold text-white flex items-center gap-1">
@@ -154,27 +158,32 @@ async def home():
                 </div>
                 <div class="flex justify-between text-[11px] text-gray-500">
                     <span>ข้อความแชท</span>
-                    <span id="quota-txt">26 / 50</span>
+                    <span id="quota-txt">27 / 50</span>
                 </div>
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col justify-between p-4 md:p-6 overflow-hidden">
-            <div class="flex justify-end items-center gap-3">
+        <!-- MAIN VIEWPORT -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            
+            <!-- HEADER BAR -->
+            <div class="flex justify-end items-center gap-3 p-4 border-b border-purple-950/10 flex-shrink-0">
                 <button class="bg-blue-600 text-white text-xs font-medium py-2 px-4 rounded-xl shadow-lg">Sign In with Google</button>
             </div>
 
-            <div id="main-scroll-area" class="flex-1 w-full max-w-3xl mx-auto my-4 overflow-y-auto flex flex-col px-2">
-                <div id="welcome-view" class="w-full flex flex-col items-center text-center pt-10 pb-4 space-y-4">
+            <!-- CHAT AREA (แก้ให้มีระบบเลื่อนตรงนี้) -->
+            <div id="main-scroll-area" class="flex-1 w-full max-w-3xl mx-auto overflow-y-auto px-4 py-4 space-y-4 flex flex-col">
+                <div id="welcome-view" class="w-full flex flex-col items-center text-center pt-12 pb-4 space-y-4">
                     <span class="text-6xl text-yellow-500 font-bold glow-gold-icon">ॐ</span>
                     <h1 class="text-4xl font-bold text-gradient">สวัสดีครับ ยินดีต้อนรับ</h1>
                     <p class="text-gray-400">วันนี้ให้ ॐ DRAGY AI ขับเคลื่อนโปรเจกต์ของคุณอย่างไรดี?</p>
                 </div>
-                <div id="chat-box" class="w-full hidden space-y-4 text-sm pb-6"></div>
+                <div id="chat-box" class="w-full hidden space-y-6 text-sm pb-10"></div>
             </div>
 
-            <div class="w-full max-w-3xl mx-auto">
-                <div class="bg-[#0f0722]/90 border border-purple-500/20 rounded-3xl p-4 flex flex-col gap-2">
+            <!-- FOOTER INPUT BAR (ล็อกให้อยู่ด้านล่างสุดเสมออย่างสวยงาม) -->
+            <div class="w-full max-w-3xl mx-auto p-4 flex-shrink-0 bg-transparent">
+                <div class="bg-[#0f0722]/95 border border-purple-500/20 rounded-3xl p-4 flex flex-col gap-2 shadow-2xl backdrop-blur-md">
                     <textarea id="user-input" class="w-full bg-transparent text-gray-200 placeholder-gray-600 text-sm focus:outline-none resize-none h-12" placeholder="พิมพ์ข้อความสั่งการ AI..."></textarea>
                     <div class="flex justify-between items-center border-t border-purple-950/60 pt-2">
                         <div class="flex gap-2 text-xs text-gray-500">
@@ -202,22 +211,31 @@ async def home():
                 const box = document.getElementById('chat-box');
                 box.classList.remove('hidden');
 
-                box.innerHTML += `<div class="flex justify-end mb-4"><div class="bg-purple-600 text-white px-4 py-2 rounded-2xl rounded-tr-none max-w-[85%]">${text}</div></div>`;
+                // ฝั่ง User (ขวา)
+                box.innerHTML += `
+                    <div class="flex justify-end mb-4">
+                        <div class="bg-purple-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[85%] shadow-md break-words">
+                            ${text}
+                        </div>
+                    </div>
+                `;
                 input.value = '';
 
                 const loadingId = "loader-" + Date.now();
                 box.innerHTML += `
-                    <div id="${loadingId}" class="flex flex-col items-start mb-4">
-                        <div class="text-[11px] text-gray-500 mb-1">ॐ DRAGY ENGINE กำลังประมวลผลคำตอบ...</div>
-                        <div class="bg-[#0d061a] border border-purple-950/60 px-4 py-2 rounded-2xl rounded-tl-none flex gap-1 items-center">
-                            <div class="w-1.5 h-1.5 bg-purple-50 rounded-full animate-bounce"></div>
-                            <div class="w-1.5 h-1.5 bg-purple-50 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                    <div id="${loadingId}" class="flex flex-col items-start mb-4 animate-fade-in">
+                        <div class="text-[11px] text-gray-500 mb-1 flex items-center gap-1">
+                            <i data-lucide="cpu" class="w-3 h-3 text-purple-400"></i> ॐ DRAGY ENGINE กำลังประมวลผล...
+                        </div>
+                        <div class="bg-[#0d061a] border border-purple-950/60 px-4 py-3 rounded-2xl rounded-tl-none flex gap-1.5 items-center shadow-inner">
+                            <div class="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                            <div class="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                            <div class="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
                         </div>
                     </div>
                 `;
-                
-                const s = document.getElementById('main-scroll-area');
-                s.scrollTop = s.scrollHeight;
+                lucide.createIcons();
+                scrollToBottom();
 
                 try {
                     const res = await fetch('/api/chat', {
@@ -228,10 +246,13 @@ async def home():
                     const data = await res.json();
                     document.getElementById(loadingId).remove();
 
+                    // ฝั่ง AI (ซ้าย)
                     box.innerHTML += `
                         <div class="flex flex-col items-start mb-4">
-                            <span class="text-[11px] text-yellow-500 font-medium mb-1">ॐ DRAGY ENGINE</span>
-                            <div class="bg-[#0d061a] border border-purple-950/60 text-gray-200 px-4 py-3 rounded-2xl rounded-tl-none max-w-[85%]">
+                            <span class="text-[11px] text-yellow-500 font-medium mb-1 flex items-center gap-1">
+                                <span class="glow-gold-icon">ॐ</span> DRAGY ENGINE
+                            </span>
+                            <div class="bg-[#0d061a] border border-purple-950/60 text-gray-200 px-4 py-3.5 rounded-2xl rounded-tl-none max-w-[85%] leading-relaxed shadow-lg break-words">
                                 ${data.reply}
                             </div>
                         </div>
@@ -248,7 +269,15 @@ async def home():
                     box.innerHTML += `<div class="text-red-400 text-xs mb-4">⚠️ ระบบขัดข้อง ไม่สามารถติดต่อหลังบ้านได้</div>`;
                 }
                 
-                s.scrollTop = s.scrollHeight;
+                scrollToBottom();
+            }
+
+            function scrollToBottom() {
+                const s = document.getElementById('main-scroll-area');
+                s.scrollTo({
+                    top: s.scrollHeight,
+                    behavior: 'smooth'
+                });
             }
 
             document.getElementById('user-input').addEventListener('keydown', (e) => {
