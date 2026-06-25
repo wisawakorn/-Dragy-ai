@@ -22,7 +22,7 @@ class ChatMessage(BaseModel):
 
 class ChatPayload(BaseModel):
     message: str
-    model: Optional[str] = "Gemini 1.5 Flash"
+    model: Optional[str] = "Gemini -3.5 Flash"
     deep_search: Optional[bool] = False
     think_mode: Optional[bool] = False
     history: List[ChatMessage] = []
@@ -57,7 +57,7 @@ async def ai_chat_endpoint(payload: ChatPayload):
         "parts": [{"text": payload.message}]
     })
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     body = {
         "contents": contents_payload,
