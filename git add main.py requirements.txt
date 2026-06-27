@@ -1,0 +1,3 @@
+git add main.py requirements.txt
+git commit -m "Upgrade AI UI and add real-model response support"
+git push origin main
