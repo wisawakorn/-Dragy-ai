@@ -298,133 +298,178 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dragy Hattewar | AI Studio</title>
+    <title>Dragy AI | Studio</title>
     <style>
         :root {{
-            --bg: #060816;
-            --panel: rgba(14, 20, 40, 0.9);
-            --border: rgba(255, 255, 255, 0.12);
-            --text: #f5f7ff;
-            --muted: #96a0c2;
+            --bg: #070b1d;
+            --panel: rgba(9, 14, 32, 0.92);
+            --panel-soft: rgba(12, 18, 42, 0.88);
+            --border: rgba(255, 255, 255, 0.11);
+            --text: #eef4ff;
+            --muted: #8fa4c6;
             --accent: #8b5cf6;
             --accent-2: #22d3ee;
-            --gold: #fbbf24;
+            --accent-3: #f59e0b;
+            --surface: rgba(255, 255, 255, 0.04);
         }}
         * {{ box-sizing: border-box; }}
         body {{
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: radial-gradient(circle at top left, #14213d 0%, var(--bg) 45%, #02040b 100%);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: var(--text);
+            background: radial-gradient(circle at top left, #181c3a 0%, #070b1d 42%, #02040b 100%);
             min-height: 100vh;
-            padding: 24px;
         }}
-        .shell {{
-            max-width: 1180px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1.1fr 0.9fr;
-            gap: 20px;
-        }}
-        .card {{
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            box-shadow: 0 16px 60px rgba(0, 0, 0, 0.35);
-            overflow: hidden;
-            backdrop-filter: blur(18px);
-        }}
-        .hero {{ padding: 28px 28px 22px; }}
-        .badge {{
-            display: inline-block;
-            padding: 7px 12px;
-            border-radius: 999px;
-            background: rgba(139, 92, 246, 0.18);
-            color: #d7c7ff;
-            font-size: 12px;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            margin-bottom: 14px;
-        }}
-        h1 {{ font-size: 34px; margin: 0 0 8px; }}
-        .subtitle {{ color: var(--muted); font-size: 15px; line-height: 1.6; margin: 0 0 16px; }}
-        .stats {{ display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }}
-        .stat {{ background: rgba(255,255,255,0.05); padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); }}
-        .chip-row {{ display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }}
-        .chip {{ border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: var(--text); padding: 8px 10px; border-radius: 999px; font-size: 12px; cursor: pointer; }}
-        .chip:hover {{ transform: translateY(-1px); filter: brightness(1.1); }}
-        .stat strong {{ display: block; font-size: 16px; }}
-        .stat span {{ color: var(--muted); font-size: 12px; }}
-        .composer {{ padding: 18px 20px 20px; border-top: 1px solid rgba(255,255,255,0.06); }}
-        .chat-area {{ min-height: 420px; display: flex; flex-direction: column; gap: 12px; padding: 18px; }}
-        .bubble {{ padding: 12px 14px; border-radius: 16px; max-width: 90%; line-height: 1.55; font-size: 14px; }}
-        .bubble.user {{ align-self: flex-end; background: linear-gradient(135deg, var(--accent), #6d28d9); color: white; }}
-        .bubble.ai {{ align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #e8ecff; }}
-        .composer-row {{ display: flex; gap: 10px; }}
-        textarea {{ flex: 1; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: var(--text); border-radius: 16px; padding: 14px 16px; min-height: 56px; resize: vertical; outline: none; }}
-        button {{ border: 0; border-radius: 16px; padding: 14px 16px; cursor: pointer; font-weight: 700; color: white; background: linear-gradient(135deg, var(--accent-2), var(--accent)); }}
-        button:hover {{ filter: brightness(1.1); }}
-        .side-panel {{ padding: 24px; display: flex; flex-direction: column; gap: 16px; }}
-        .panel-block {{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 14px 16px; }}
-        .panel-block h3 {{ margin: 0 0 8px; font-size: 16px; }}
-        .panel-block p, .panel-block li {{ color: var(--muted); font-size: 13px; line-height: 1.6; }}
-        .panel-block ul {{ padding-left: 18px; margin: 6px 0 0; }}
-        .tiny {{ font-size: 12px; color: var(--muted); }}
-        @media (max-width: 900px) {{
-            .shell {{ grid-template-columns: 1fr; }}
-        }}
+        .app-shell {{ display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }}
+        .sidebar {{ background: linear-gradient(180deg, rgba(11, 18, 44, 0.95), rgba(6, 9, 20, 0.95)); border-right: 1px solid rgba(255,255,255,0.07); padding: 28px 20px; display: flex; flex-direction: column; gap: 22px; }}
+        .brand {{ display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }}
+        .brand-logo {{ width: 36px; height: 36px; border-radius: 14px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; }}
+        .brand-text {{ display: grid; gap: 2px; }}
+        .brand-text strong {{ font-size: 16px; }}
+        .brand-text span {{ color: var(--muted); font-size: 12px; }}
+        .nav-list {{ list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }}
+        .nav-item {{ display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,0.03); color: var(--text); cursor: pointer; transition: background 0.2s; }}
+        .nav-item.active, .nav-item:hover {{ background: rgba(139,92,246,0.16); }}
+        .nav-item span {{ font-size: 14px; }}
+        .nav-icon {{ width: 18px; height: 18px; margin-right: 10px; display: inline-flex; align-items: center; justify-content: center; }}
+        .status-card {{ padding: 18px; border-radius: 22px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }}
+        .status-card h3 {{ margin: 0 0 12px; font-size: 14px; color: var(--muted); }}
+        .status-badge {{ display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(139,92,246,0.16); color: #e9d5ff; font-size: 12px; }}
+        .sidebar-footer {{ margin-top: auto; display: grid; gap: 10px; }}
+        .pro-box {{ padding: 16px; border-radius: 22px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); }}
+        .pro-box strong {{ display: block; font-size: 14px; margin-bottom: 6px; }}
+        .pro-box p {{ margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }}
+        .button-primary {{ display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border-radius: 14px; background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: white; border: 0; cursor: pointer; width: 100%; font-weight: 700; }}
+        .main-panel {{ padding: 28px 32px; display: flex; flex-direction: column; gap: 24px; }}
+        .top-bar {{ display: flex; align-items: center; justify-content: flex-end; gap: 14px; }}
+        .top-chip {{ display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: var(--text); font-size: 13px; }}
+        .hero-panel {{ background: linear-gradient(180deg, rgba(14,23,54,0.95), rgba(7, 11, 26, 0.95)); border: 1px solid rgba(255,255,255,0.08); border-radius: 28px; padding: 36px; display: grid; gap: 18px; position: relative; overflow: hidden; }}
+        .hero-panel::after {{ content: ''; position: absolute; inset: 0; background: radial-gradient(circle at top right, rgba(139,92,246,0.18), transparent 28%), radial-gradient(circle at bottom left, rgba(34,211,238,0.12), transparent 24%); pointer-events: none; }}
+        .hero-panel h1 {{ margin: 0; font-size: 44px; line-height: 1.05; }}
+        .hero-panel p {{ margin: 0; color: var(--muted); max-width: 720px; font-size: 16px; line-height: 1.8; }}
+        .hero-actions {{ display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }}
+        .hero-actions .pill {{ padding: 10px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: var(--text); font-size: 13px; }}
+        .prompt-card {{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 26px; padding: 26px; display: grid; gap: 18px; }}
+        .prompt-header {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; }}
+        .prompt-header h2 {{ margin: 0; font-size: 20px; }}
+        .prompt-header span {{ color: var(--muted); font-size: 13px; }}
+        .prompt-input {{ display: grid; gap: 14px; }}
+        .prompt-input textarea {{ width: 100%; min-height: 130px; resize: vertical; padding: 18px 20px; border-radius: 22px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: var(--text); font-size: 15px; line-height: 1.7; }}
+        .prompt-row {{ display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }}
+        .prompt-row button {{ min-width: 140px; }}
+        .suggestion-list {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }}
+        .suggestion-card {{ padding: 16px 18px; border-radius: 20px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; transition: transform 0.2s, border-color 0.2s; }}
+        .suggestion-card:hover {{ transform: translateY(-2px); border-color: rgba(139,92,246,0.22); }}
+        .suggestion-card strong {{ display: block; margin-bottom: 6px; font-size: 14px; }}
+        .suggestion-card span {{ color: var(--muted); font-size: 13px; line-height: 1.6; }}
+        .chat-log {{ display: grid; gap: 12px; }}
+        .chat-message {{ padding: 16px 18px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }}
+        .chat-message.user {{ background: linear-gradient(135deg, rgba(139,92,246,0.8), rgba(99,102,241,0.85)); color: white; text-align: right; }}
+        .chat-message.ai {{ background: rgba(255,255,255,0.04); color: var(--text); }
+        .chat-message p {{ margin: 0; line-height: 1.8; font-size: 14px; }}
+        .chat-badge {{ display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,0.06); color: var(--muted); font-size: 12px; }}
+        .top-actions {{ display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }}
+        .top-actions button {{ border-radius: 999px; padding: 10px 16px; background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; }}
+        .top-button-primary {{ background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: white; border: none; }}
+        .footer-notice {{ margin-top: 16px; color: var(--muted); font-size: 13px; }}
+        @media (max-width: 1100px) {{ .app-shell {{ grid-template-columns: 1fr; }} .sidebar {{ order: 2; }} }}
+        @media (max-width: 720px) {{ .hero-panel h1 {{ font-size: 30px; }} .suggestion-list {{ grid-template-columns: 1fr; }} }}
     </style>
 </head>
 <body>
-    <div class="shell">
-        <div class="card">
-            <div class="hero">
-                <div class="badge">⚡ Dragy Hattewar AI Studio</div>
-                <h1>สร้างสรรค์ไอเดียด้วย AI แบบทันที</h1>
-                <p class="subtitle">พิมพ์ prompt ของคุณ แล้วรับคำตอบที่สวยงาม เหมือนหน้าต่างแชท AI ระดับมืออาชีพ พร้อมระบบ Quantum Core ที่ช่วยให้การตอบสนองดูมีความลึกและน่าสนใจ</p>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">D</div>
+                <div class="brand-text">
+                    <strong>Dragy AI</strong>
+                    <span>AI Studio</span>
+                </div>
+            </div>
+            <div class="top-actions">
+                <button class="top-button-primary">Login with Google</button>
+            </div>
+            <ul class="nav-list">
+                <li class="nav-item active"><span>หน้าแรก</span></li>
+                <li class="nav-item"><span>AI Chat</span></li>
+                <li class="nav-item"><span>AI Image</span></li>
+                <li class="nav-item"><span>AI Video</span></li>
+                <li class="nav-item"><span>เครื่องมือ AI</span></li>
+                <li class="nav-item"><span>ประวัติแชท</span></li>
+                <li class="nav-item"><span>โปรไฟล์</span></li>
+                <li class="nav-item"><span>การตั้งค่า</span></li>
+            </ul>
+            <div class="status-card">
+                <h3>วันนี้คุณใช้งาน</h3>
                 <div class="chip-row">
-                    <button class="chip" type="button" onclick="fillPrompt('สร้างสคริปต์ขายสินค้าให้ดูน่าคิดขึ้น')">สร้างสคริปต์ขาย</button>
-                    <button class="chip" type="button" onclick="fillPrompt('ช่วยสรุปแนวคิดสำหรับโปรเจกต์ AI สั้น ๆ')">สรุปแนวคิด</button>
-                    <button class="chip" type="button" onclick="fillPrompt('ช่วยเขียนข้อความโปรโมตสั้น ๆ สำหรับแบรนด์')">ข้อความโปรโมต</button>
-                </div>
-                <div class="stats">
-                    <div class="stat"><strong>{status}</strong><span>สถานะควอนตัม</span></div>
-                    <div class="stat"><strong>{location}</strong><span>ตำแหน่งเรโซแนนซ์</span></div>
-                    <div class="stat"><strong>{timestamp}</strong><span>เวลาอัปเดต</span></div>
+                    <span class="chip">ภาพ 12/15</span>
+                    <span class="chip">วิดีโอ 0/1</span>
+                    <span class="chip">แชท 23/50</span>
                 </div>
             </div>
-            <div class="chat-area" id="chat-area">
-                <div class="bubble ai">สวัสดีครับ ผมคือ Dragy AI พร้อมช่วยคุณคิดค้นแนวคิด วางแผนงาน และสร้างสรรค์คำตอบแบบทันที</div>
+            <div class="pro-box">
+                <strong>Dragy AI Pro</strong>
+                <p>ปลดล็อกทุกฟีเจอร์ เริ่มต้นเพียง ฿99 / เดือน</p>
             </div>
-            <div class="composer">
-                <div class="composer-row">
-                    <textarea id="prompt-input" placeholder="พิมพ์ prompt ที่คุณต้องการเช่น: สร้างสคริปต์แนะนำสินค้าให้ดูน่าคิดขึ้น..."></textarea>
-                    <button onclick="sendPrompt()">ส่ง</button>
+        </aside>
+        <main class="main-panel">
+            <div class="top-bar">
+                <span class="top-chip">TH</span>
+                <span class="top-chip">Dark</span>
+                <button class="top-button-primary">เข้าสู่ระบบ</button>
+            </div>
+            <section class="hero-panel">
+                <h1>สวัสดีครับ 👋</h1>
+                <p>วันนี้ให้ Dragy AI ช่วยอะไรดี? พิมพ์คำถามหรือไอเดียของคุณ แล้วรับคำตอบทันทีในรูปแบบแชท AI ที่สวยงามและใช้งานง่าย</p>
+                <div class="hero-actions">
+                    <span class="pill">DeepSearch</span>
+                    <span class="pill">Think</span>
+                    <span class="pill">Grok 3</span>
                 </div>
-                <div class="tiny" style="margin-top: 8px;">กด Enter เพื่อส่งข้อความ, Shift+Enter เพื่อขึ้นบรรทัดใหม่</div>
-            </div>
-        </div>
-
-        <div class="card side-panel">
-            <div class="panel-block">
-                <h3>🧠 Quantum Features</h3>
-                <ul>
-                    <li>ระบบควอนตัมจำลองเพื่อแสดงสถานะและเรโซแนนซ์ของเครือข่าย</li>
-                    <li>รองรับ prompt สั้นเข้มข้นและคำสั่งสร้างสรรค์</li>
-                    <li>แสดงผลลัพธ์แบบบับเบิลแชทที่อ่านง่าย</li>
-                </ul>
-            </div>
-            <div class="panel-block">
-                <h3>⚡ Ready to use</h3>
-                <p>คุณสามารถพิมพ์ข้อความเพื่อทดสอบคำตอบจาก Dragy AI ได้ทันที และยังสามารถต่อยอดเป็นเว็บแอปเติมฟีเจอร์ต่อได้ในอนาคต</p>
-            </div>
-            <div class="panel-block">
-                <h3>📡 Live Status</h3>
-                <div class="tiny">{news_html}</div>
-            </div>
-        </div>
+            </section>
+            <section class="prompt-card">
+                <div class="prompt-header">
+                    <div>
+                        <h2>เริ่มต้นแชทกับ Dragy AI</h2>
+                        <span>พิมพ์คำสั่งที่คุณต้องการ แล้วระบบจะตอบกลับในทันที</span>
+                    </div>
+                    <button class="button-primary" onclick="sendPrompt()">ส่งคำสั่ง</button>
+                </div>
+                <div class="prompt-input">
+                    <textarea id="prompt-input" placeholder="พิมพ์ข้อความ หรือคำถาม เช่น ช่วยเขียนโพสต์ขายของให้สั้นและน่าอ่าน"></textarea>
+                </div>
+                <div class="suggestion-list">
+                    <button class="suggestion-card" onclick="fillPrompt('เขียนโพสต์ขายสินค้าให้สั้นและน่าอ่าน')">
+                        <strong>ขายของบน TikTok</strong>
+                        <span>ออกแบบโพสต์โฆษณาให้ตรงใจลูกค้า</span>
+                    </button>
+                    <button class="suggestion-card" onclick="fillPrompt('สรุปข่าวเทคโนโลยีล่าสุดให้อ่านง่าย')">
+                        <strong>สรุปข่าว</strong>
+                        <span>สรุปข่าวเทคโนโลยีในแบบสั้นกระชับ</span>
+                    </button>
+                    <button class="suggestion-card" onclick="fillPrompt('ช่วยเขียนสคริปต์วิดีโอสำหรับ YouTube')">
+                        <strong>วิดีโอ AI</strong>
+                        <span>เขียนสคริปต์สำหรับวิดีโอได้ทันที</span>
+                    </button>
+                    <button class="suggestion-card" onclick="fillPrompt('แปลข้อความจากไทยเป็นอังกฤษอย่างเป็นมืออาชีพ')">
+                        <strong>แปลภาษา</strong>
+                        <span>แปลประโยคให้เป็นมืออาชีพ</span>
+                    </button>
+                </div>
+            </section>
+            <section class="prompt-card">
+                <div class="prompt-header">
+                    <h2>ผลลัพธ์ล่าสุด</h2>
+                </div>
+                <div class="chat-log" id="chat-area">
+                    <div class="chat-message ai">
+                        <p>สวัสดีครับ ผมคือ Dragy AI พร้อมช่วยคุณคิดค้นแนวคิด วางแผนงาน และสร้างสรรค์คำตอบแบบทันที</p>
+                    </div>
+                </div>
+                <p class="footer-notice">ผลลัพธ์จะปรากฏที่นี่เมื่อคุณส่งคำสั่ง</p>
+            </section>
+        </main>
     </div>
-
     <script>
         const input = document.getElementById('prompt-input');
         const chatArea = document.getElementById('chat-area');
@@ -445,12 +490,17 @@ HTML_TEMPLATE = """
             const text = input.value.trim();
             if (!text) return;
 
-            chatArea.insertAdjacentHTML('beforeend', `<div class="bubble user">${{text}}</div>`);
+            const userBubble = document.createElement('div');
+            userBubble.className = 'chat-message user';
+            userBubble.innerHTML = `<p>${{text}}</p>`;
+            chatArea.appendChild(userBubble);
             input.value = '';
+
             const loading = document.createElement('div');
-            loading.className = 'bubble ai';
-            loading.innerHTML = 'กำลังคิดคำตอบให้คุณ...';
+            loading.className = 'chat-message ai';
+            loading.innerHTML = '<p>กำลังคิดคำตอบให้คุณ...</p>';
             chatArea.appendChild(loading);
+            chatArea.scrollTop = chatArea.scrollHeight;
 
             try {{
                 const response = await fetch('/api/chat', {{
@@ -460,12 +510,17 @@ HTML_TEMPLATE = """
                 }});
                 const data = await response.json();
                 loading.remove();
-                const modeLabel = data.mode ? ` <span class="tiny">(${{data.mode}})</span>` : '';
-                chatArea.insertAdjacentHTML('beforeend', `<div class="bubble ai">${{data.reply}}${{modeLabel}}</div>`);
+                const replyBubble = document.createElement('div');
+                replyBubble.className = 'chat-message ai';
+                replyBubble.innerHTML = `<p>${{data.reply}}</p>${{data.mode ? `<div class="chat-badge">${{data.mode}}</div>` : ''}`;
+                chatArea.appendChild(replyBubble);
                 chatArea.scrollTop = chatArea.scrollHeight;
             }} catch (e) {{
                 loading.remove();
-                chatArea.insertAdjacentHTML('beforeend', `<div class="bubble ai">เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง</div>`);
+                const errorBubble = document.createElement('div');
+                errorBubble.className = 'chat-message ai';
+                errorBubble.innerHTML = '<p>เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง</p>';
+                chatArea.appendChild(errorBubble);
             }}
         }}
     </script>
