@@ -16,9 +16,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("DragyHattewar")
+logger = logging.getLogger("DrakyHatthevas")
 
-app = FastAPI(title="Dragy Hattewar Quantum Server")
+app = FastAPI(title="Darky Hatthevas Studio")
 
 
 class SecurityShield:
@@ -26,7 +26,7 @@ class SecurityShield:
         self.request_history: Deque[dict[str, Any]] = deque()
         self.max_requests = max_requests_per_minute
         self.blocked_ips: set[str] = set()
-        logger.info("[Security] Dragy Defense Shield Initialized.")
+        logger.info("[Security] Defense Shield Initialized.")
 
     def is_rate_limited(self, client_id: str) -> bool:
         current_time = time.time()
@@ -53,7 +53,7 @@ class SecurityShield:
         return hashlib.compare_digest(expected_sig, signature)
 
 
-class DragyMLEngine:
+class DrakyHatthevasMLEngine:
     def __init__(self, learning_rate: float = 0.01, epochs: int = 1000, regularization_lambda: float = 0.01) -> None:
         self.weights: Optional[float] = None
         self.bias = 0.0
@@ -61,7 +61,7 @@ class DragyMLEngine:
         self.epochs = epochs
         self.reg_lambda = regularization_lambda
         self.is_trained = False
-        logger.info("[AI Core] Dragy ML Engine Ready.")
+        logger.info("[AI Core] ML Engine Ready.")
 
     def train(self, X: List[float], y: List[float]) -> None:
         logger.info("[AI Core] Starting Training Process...")
@@ -109,21 +109,21 @@ class VideoPipelineManager:
         logger.info(f"[Pipeline] Processing Job {job['id']}...")
         time.sleep(0.2)
         job["status"] = "completed"
-        job["output_url"] = f"https://storage.dragy.ai/{job['id']}_h265_optimized.mp4"
+        job["output_url"] = f"https://storage.hatthevas.ai/{job['id']}_h265_optimized.mp4"
         logger.info(f"[Pipeline] Job {job['id']} Completed. Saved to: {job['output_url']}")
         return job
 
 
-class DragyHattewarSystem:
+class DrakyHatthevasSystem:
     def __init__(self) -> None:
         self.security = SecurityShield(max_requests_per_minute=10)
-        self.ai_engine = DragyMLEngine()
+        self.ai_engine = DrakyHatthevasMLEngine()
         self.video_manager = VideoPipelineManager()
-        self.secret_key = "DRAGY_SECRET_KEY_2026"
+        self.secret_key = "HATTHEVAS_SECRET_KEY_2026"
         self._train_default_model()
         logger.info("=================================================")
-        logger.info(" DRAGY HATTEWAR SYSTEM (AI Core Engine a1) STARTED")
-        logger.info(" Creator: Dragy Hattewar")
+        logger.info(" DARKY HATTHEVAS STUDIO (AI Core Engine a1) STARTED")
+        logger.info(" Creator: Darky Hatthevas")
         logger.info("=================================================")
 
     def _train_default_model(self) -> None:
@@ -201,7 +201,7 @@ class QuantumCore:
 
 
 q_core = QuantumCore()
-dragy_system = DragyHattewarSystem()
+system = DrakyHatthevasSystem()
 
 
 def _build_ai_prompt(prompt: str, history: Optional[List["ChatMessage"]] = None) -> str:
@@ -211,7 +211,7 @@ def _build_ai_prompt(prompt: str, history: Optional[List["ChatMessage"]] = None)
             recent_history.append(f"{msg.role}: {msg.parts}")
     history_text = "\n".join(recent_history)
     return (
-        "You are Dragy AI, a polished Thai assistant for an AI studio. "
+        "You are Darky Hatthevas, a polished Thai assistant for an AI studio. "
         "Answer warmly, concisely, and creatively in Thai unless the user clearly asks in another language. "
         f"User request: {prompt}\nConversation history:\n{history_text}"
     )
@@ -230,7 +230,7 @@ def generate_ai_reply(prompt: str, history: Optional[List["ChatMessage"]] = None
             client = OpenAI(api_key=api_key)
             response = client.responses.create(
                 model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                instructions="You are Dragy AI, a helpful Thai assistant. Be concise, practical, and polished.",
+                instructions="You are Darky Hatthevas, a helpful Thai assistant. Be concise, practical, and polished.",
                 input=_build_ai_prompt(cleaned_prompt, history),
             )
             reply = getattr(response, "output_text", None) or ""
@@ -286,7 +286,7 @@ class ChatPayload(BaseModel):
     history: List[ChatMessage] = Field(default_factory=list)
 
 
-class DragyRequest(BaseModel):
+class HatthevasRequest(BaseModel):
     client_id: str = "demo-client"
     prompt: str
     signature: Optional[str] = None
@@ -298,7 +298,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dragy AI | Studio</title>
+    <title>Darky Hatthevas | Studio</title>
     <style>
         :root {{
             --bg: #070b1d;
@@ -365,7 +365,7 @@ HTML_TEMPLATE = """
         .chat-log {{ display: grid; gap: 12px; }}
         .chat-message {{ padding: 16px 18px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }}
         .chat-message.user {{ background: linear-gradient(135deg, rgba(139,92,246,0.8), rgba(99,102,241,0.85)); color: white; text-align: right; }}
-        .chat-message.ai {{ background: rgba(255,255,255,0.04); color: var(--text); }
+        .chat-message.ai {{ background: rgba(255,255,255,0.04); color: var(--text); }}
         .chat-message p {{ margin: 0; line-height: 1.8; font-size: 14px; }}
         .chat-badge {{ display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,0.06); color: var(--muted); font-size: 12px; }}
         .top-actions {{ display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }}
@@ -382,7 +382,7 @@ HTML_TEMPLATE = """
             <div class="brand">
                 <div class="brand-logo">D</div>
                 <div class="brand-text">
-                    <strong>Dragy AI</strong>
+                    <strong>Darky Hatthevas</strong>
                     <span>AI Studio</span>
                 </div>
             </div>
@@ -408,7 +408,7 @@ HTML_TEMPLATE = """
                 </div>
             </div>
             <div class="pro-box">
-                <strong>Dragy AI Pro</strong>
+                <strong>Darky Hatthevas Pro</strong>
                 <p>ปลดล็อกทุกฟีเจอร์ เริ่มต้นเพียง ฿99 / เดือน</p>
             </div>
         </aside>
@@ -430,7 +430,7 @@ HTML_TEMPLATE = """
             <section class="prompt-card">
                 <div class="prompt-header">
                     <div>
-                        <h2>เริ่มต้นแชทกับ Dragy AI</h2>
+                        <h2>เริ่มต้นแชทกับ Darky Hatthevas</h2>
                         <span>พิมพ์คำสั่งที่คุณต้องการ แล้วระบบจะตอบกลับในทันที</span>
                     </div>
                     <button class="button-primary" onclick="sendPrompt()">ส่งคำสั่ง</button>
@@ -531,18 +531,7 @@ HTML_TEMPLATE = """
 
 @app.get("/", response_class=HTMLResponse)
 async def home() -> HTMLResponse:
-    data = q_core.collapse_state("Sakon Nakhon, TH")
-    news_html = "".join(
-        f'<div class="news-item"><span class="tag">{item["type"]}</span> {item["title"]}</div>'
-        for item in data["news_feed"]
-    )
-    html = HTML_TEMPLATE.format(
-        status=data["status"],
-        location=data["location_resonance"],
-        timestamp=data["timestamp"],
-        news_html=news_html,
-    )
-    return HTMLResponse(content=html)
+    return HTMLResponse(content=HTML_TEMPLATE)
 
 
 @app.post("/api/chat")
