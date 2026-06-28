@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: darky-hatthevas-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/hatthevas_db
+      - MONGO_URI=mongodb://mongodb:27017/studio_db
+      - DEBUG=false
+    depends_on:
+      - db
+      - mongodb
+    volumes:
+      - ./:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgres:15
+    container_name: darky-hatthevas-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=hatthevas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:latest
+    container_name: darky-hatthevas-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=studio_db
+
+  frontend:
+    image: streamlit:latest
+    container_name: darky-hatthevas-frontend
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./:/app
+    command: streamlit run streamlit_app.py
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  mongodb_data:
